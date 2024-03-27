@@ -1,14 +1,6 @@
 
 #include "Input.hpp"
-
-#define KO -1
-#define NOT_INIT 0
-#define MISS_KEY 1
-#define OPEN_KEY 2
-#define COMENT 3
-#define EMPTY 4
-#define CLOSE_KEY 5
-#define VALID_ARG 10
+#include "Utils.hpp"
 
 Input::Input( void ) { correct = 0; }
 
@@ -27,43 +19,21 @@ void Input::reopenFile ( void )
 		throw std::invalid_argument("File inaccessible");
 }
 
-void eraseAllTabs(std::string& str, const std::string& token) {
+void Input::eraseAllTabs(std::string& str, const std::string& token) {
     size_t pos = 0;
     while ((pos = str.find(token, pos)) != std::string::npos) {
         str[pos] = ' ';
     }
 }
 
-void throwExeptionFormat(std::string str, int i)
+void Input::throwExeptionFormat(std::string str, int i)
 {
 	std::stringstream ss;
 	ss << "File format error in line " << i << ": " << str;
 	throw std::invalid_argument(ss.str());
 }
 
-std::vector<std::string> split(const std::string& s, char delimiter)
-{
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream tokenStream(s);
-    while (std::getline(tokenStream, token, delimiter))
-        if (!token.empty())
-            tokens.push_back(token);
-    return tokens;
-}
-
-bool	isInt(const std::string & value)
-{
-	const char	*str = value.c_str();
-	char	*endptr;
-	long	nb = std::strtol(str, &endptr, 10);
-	
-	if (endptr != str && *endptr == '\0' && nb <= std::numeric_limits<int>::max() && nb >= std::numeric_limits<int>::min())
-		return (true);
-	return (false);
-}
-
-int	limitsNum(std::string num, int min, int max)
+int	Input::limitsNum(std::string num, int min, int max)
 {
 
 	if (num[num.size() - 1] == ';')
@@ -80,7 +50,7 @@ int	limitsNum(std::string num, int min, int max)
 	return (0);
 }
 
-int checkValidNames(std::vector<std::string> lineSplit)
+int Input::checkValidNames(std::vector<std::string> lineSplit)
 {
 	std::vector<std::string>::iterator it = lineSplit.begin();
 	
@@ -104,12 +74,7 @@ int checkValidNames(std::vector<std::string> lineSplit)
 	return (1);
 }
 
-#define BYTES 0
-#define KILOS 1
-#define MEGAS 2
-#define GIGAS 3
-
-int checkValidSize(std::string str)
+int Input::checkValidSize(std::string str)
 {
 	int type = BYTES;
 
@@ -138,7 +103,7 @@ int checkValidSize(std::string str)
 	return(0);
 }
 
-int checkValidDir(std::string str)
+int Input::checkValidDir(std::string str)
 {
 	if (str[str.size() - 1] == ';')
 		str.erase(str.size() - 1);
@@ -154,7 +119,7 @@ int checkValidDir(std::string str)
 	return (1);
 }
 
-int checkServSplit(std::string str, int flag, bool key_open, int i)
+int Input::checkServSplit(std::string str, int flag, bool key_open, int i)
 {
 	std::vector<std::string> lineSplit = split(str, ' ');
 
