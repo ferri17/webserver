@@ -63,16 +63,17 @@ bool	isInt(const std::string & value)
 	return (false);
 }
 
-int	limitsPorts(std::string num)
+int	limitsNum(std::string num, int min, int max)
 {
+
 	if (num[num.size() - 1] == ';')
 		num.erase(num.size() - 1);
-	else
+	else if (min != 400)
 		return (0);
 	if (isInt(num))
 	{
 		int number = atoi(num.c_str());
-		if (number > 65535 || number < 0)
+		if (number > max || number < min)
 			return (0);
 		return (1);
 	}
@@ -101,7 +102,6 @@ int checkValidNames(std::vector<std::string> lineSplit)
 		}
 	}
 	return (1);
-
 }
 
 #define BYTES 0
@@ -138,6 +138,22 @@ int checkValidSize(std::string str)
 	return(0);
 }
 
+int checkValidDir(std::string str)
+{
+	if (str[str.size() - 1] == ';')
+		str.erase(str.size() - 1);
+	else
+		return (0);
+	if (str.size() == 0)
+		return (0);
+	for (int i = 0; str[i]; i++)
+	{
+		if(isalnum(str[i]) == false && str[i] != '.' && str[i] != '-' && str[i] != '_' && str[i] != '/')
+			return (0);
+	}
+	return (1);
+}
+
 int checkServSplit(std::string str, int flag, bool key_open, int i)
 {
 	std::vector<std::string> lineSplit = split(str, ' ');
@@ -157,12 +173,16 @@ int checkServSplit(std::string str, int flag, bool key_open, int i)
 	}
 	else if (key_open == true)
 	{
-		if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsPorts(lineSplit[1]))
+		if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
 			return (VALID_ARG);
 		if (lineSplit.size() >= 2 && lineSplit[0] == "server_name" && checkValidNames(lineSplit))
 			return	(VALID_ARG);
 		if (lineSplit.size() == 2 && lineSplit[0] == "client_max_body_size" && checkValidSize(lineSplit[1]))
 			return	(VALID_ARG);
+		if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDir(lineSplit[1]))
+			return (VALID_ARG);
+		if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDir(lineSplit[2]))
+			return (VALID_ARG);
 		if (lineSplit.size() == 1 && lineSplit[0] == "}")
 			return (CLOSE_KEY);
 	}
