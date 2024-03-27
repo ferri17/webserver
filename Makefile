@@ -11,10 +11,18 @@ NAME = webserv
 FLAGS = -std=c++98 -Wall -Wextra -Werror
 DEPFLAGS = -MMD -MP
 
-SRC = main.cpp Input.cpp
+FILES_SRC = Input.cpp
+MAIN = main.cpp
 DIR_OBJ = .tmp/
 
-OBJ = $(addprefix $(DIR_OBJ), $(SRC:.cpp=.o))
+DIR_SRC = src/
+
+SRC = $(addprefix $(DIR_SRC), $(FILES_SRC))
+
+OBJ_SRC = $(addprefix $(DIR_OBJ), $(SRC:.cpp=.o))
+OBJ_MAIN = $(addprefix $(DIR_OBJ), $(MAIN:.cpp=.o))
+
+OBJ = $(OBJ_SRC) $(OBJ_MAIN)
 DEP = $(OBJ:.o=.d)
 
 all: $(DIR_OBJ) $(NAME)
@@ -27,7 +35,8 @@ $(DIR_OBJ):
 	@mkdir -p $(DIR_OBJ)
 
 $(DIR_OBJ)%.o: %.cpp Makefile
-	@c++ $(FLAGS) $(DEPFLAGS) -c $< -o $@
+	@mkdir -p $(dir $@)
+	@c++ $(FLAGS) -I./inc $(DEPFLAGS) -c $< -o $@
 	@echo "$(YELLOW)Compiling $<$(NC)"
 
 clean:
