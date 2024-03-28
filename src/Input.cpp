@@ -1,6 +1,7 @@
 
 #include "Input.hpp"
 #include "Utils.hpp"
+#include "Colors.hpp"
 
 Input::Input( void ) { correct = 0; }
 
@@ -29,7 +30,7 @@ void Input::eraseAllTabs(std::string& str, const std::string& token) {
 void Input::throwExeptionFormat(std::string str, int i)
 {
 	std::stringstream ss;
-	ss << "File format error in line " << i << ": " << str;
+	ss << RED "File format error in line " << i << ": " NC << str;
 	throw std::invalid_argument(ss.str());
 }
 
@@ -175,7 +176,7 @@ bool Input::checkFormat( void )
 		else if (flag == CLOSE_KEY)
 		{
 			key_open = false;
-			std::cout << "SERVER CREATED" << std::endl;
+			std::cout << GREEN "SERVER CREATED" NC << std::endl;
 		}
 		i++;
 	} while (!file.eof());
