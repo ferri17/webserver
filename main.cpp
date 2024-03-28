@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include "Input.hpp"
+#include "Server.hpp"
 
 int main(int ac, char **av)
 {
@@ -10,6 +11,9 @@ int main(int ac, char **av)
 	{
 		Input test(av[1]);
 		test.checkFormat();
+		Server s(true);
+
+		std::cout << s << std::endl;
 	}
 	catch(const std::exception& e)
 	{

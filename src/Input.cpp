@@ -149,6 +149,8 @@ int Input::checkServSplit(std::string str, int flag, bool key_open, int i)
 			return (VALID_ARG);
 		if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDir(lineSplit[2]))
 			return (VALID_ARG);
+		if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDir(lineSplit[1]))
+			return (VALID_ARG);
 		if (lineSplit.size() == 1 && lineSplit[0] == "}")
 			return (CLOSE_KEY);
 	}
