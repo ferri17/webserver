@@ -5,36 +5,127 @@ Server::Server( void ) {}
 
 void Server::initDef(void)
 {
-	listen = 4242;
-	server_name.push_back("default.com");
-	client_max_body_size = 1024;
-	root = ".";
-	upload_store = "/tmp";
-	error_page.insert(std::pair<int, std::string>(4242, "./html/error.html"));
+	_listen = 4242;
+	_server_name.push_back("default.com");
+	_client_max_body_size = 1024;
+	_root = ".";
+	_upload_store = "/tmp";
+	_error_page.insert(std::pair<int, std::string>(4242, "./html/error.html"));
 }
 
 /// GET & SET
-int Server::getListen() const { return listen; }
-std::vector<std::string> Server::getServerName() const { return server_name; }
-int Server::getClientMaxBodySize() const { return client_max_body_size; }
-std::string Server::getRoot() const { return root; }
-std::string Server::getUploadStore() const { return upload_store; }
-std::map<int, std::string> Server::getErrorPage() const { return error_page; }
-void Server::setListen(int listen_) { listen = listen_; }
-void Server::setServerName(const std::vector<std::string> &serverName) { server_name = serverName; }
-void Server::setClientMaxBodySize(int clientMaxBodySize) { client_max_body_size = clientMaxBodySize; }
-void Server::setRoot(const std::string &root_) { root = root_; }
-void Server::setUploadStore(const std::string &uploadStore) { upload_store = uploadStore; }
-void Server::setErrorPage(const std::map<int, std::string> &errorPage) { error_page = errorPage; }
+int Server::getListen() const { return _listen; }
+std::vector<std::string> Server::getServerName() const { return _server_name; }
+int Server::getClientMaxBodySize() const { return _client_max_body_size; }
+std::string Server::getRoot() const { return _root; }
+std::string Server::getUploadStore() const { return _upload_store; }
+std::map<int, std::string> Server::getErrorPage() const { return _error_page; }
+void Server::setListen(int listen_) { _listen = listen_; }
+void Server::setServerName(const std::vector<std::string> &serverName) { _server_name = serverName; }
+void Server::setClientMaxBodySize(int clientMaxBodySize) { _client_max_body_size = clientMaxBodySize; }
+void Server::setRoot(const std::string &root) { _root = root; }
+void Server::setUploadStore(const std::string &uploadStore) { _upload_store = uploadStore; }
+void Server::setErrorPage(const std::map<int, std::string> &errorPage) { _error_page = errorPage; }
 
 void Server::pushServerName(std::string str)
 {
-	server_name.push_back(str);
+	_server_name.push_back(str);
 }
 void Server::pushErrorPage(std::pair<int, std::string> node)
 {
-	error_page.insert(node);
+	_error_page.insert(node);
 }
+
+	
+std::string checkLine(std::vector<std::string> line)
+{
+	if (line.size() == 3 && line[0] == "GET")
+	{
+		return (line[1]);
+	}
+	return (NULL);
+}
+
+void Server::startServ( void )
+{
+    // Crear el socket
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        std::cerr << "Error al crear el socket" << std::endl;
+    }
+
+    // Especificar la dirección
+    sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(_listen);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+
+    // Vincular el socket
+    if (bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1) {
+        std::cerr << "Error al vincular el socket" << std::endl;
+        close(serverSocket);
+    }
+
+    // Escuchar en el socket
+    if (listen(serverSocket, 5) == -1) {
+        std::cerr << "Error al escuchar en el socket" << std::endl;
+        close(serverSocket);
+    }
+
+
+    // Aceptar la solicitud de conexión
+    int clientSocket = accept(serverSocket, nullptr, nullptr);
+    if (clientSocket == -1) {
+        std::cerr << "Error al aceptar la conexión" << std::endl;
+        close(serverSocket);
+    }
+	
+	char buffer[1024] = { 0 }; 
+    recv(clientSocket, buffer, sizeof(buffer), 0); 
+
+	std::vector<std::string> lines = split(buffer, '\n');
+	std::string filename;
+	
+	for (size_t i = 0; i < lines.size(); i++)
+	{
+		filename = checkLine(split(lines[i], ' '));
+		if (!filename.empty())
+			break;
+
+	}
+	if (filename == "/")
+		filename = "./html/index.html";
+	else
+		filename = "./html/not_default.html";
+    std::ifstream file;
+
+	file.open(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error al abrir el archivo HTML" << std::endl;
+        close(clientSocket);
+        close(serverSocket);
+        return ;
+    }
+
+	std::string html;
+
+	std::getline(file, html, '\0');
+
+    file.close();
+
+	std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
+    // Enviar HTML al cliente
+    if (send(clientSocket, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
+        std::cerr << "Error al enviar HTML al cliente" << std::endl;
+        close(clientSocket);
+        close(serverSocket);
+    }
+
+    // Cerrar los sockets
+    close(clientSocket);
+    close(serverSocket);
+}
+
 
 Server::~Server( void )
 {

@@ -98,7 +98,6 @@ int Input::checkValidSize(std::string str)
 		long num = atoi(str.c_str());
 		for (int i = 0; i < type; i++)
 			num *= 1024;
-		//AQUI ESTA EN BYTES TO SAVE IN A CLASS 
 		return(1);
 	}
 	return(0);
@@ -120,6 +119,44 @@ int Input::checkValidDir(std::string str)
 	return (1);
 }
 
+int Input::checkVarServer(std::vector<std::string> lineSplit, Server &s)
+{
+	if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
+	{
+		s.setListen(std::atoi(lineSplit[1].c_str()));
+		return (VALID_ARG);
+	}
+	if (lineSplit.size() >= 2 && lineSplit[0] == "server_name" && checkValidNames(lineSplit))
+	{
+		for (size_t j = 1; j < lineSplit.size(); j++)
+			s.pushServerName(lineSplit[j]);
+		return	(VALID_ARG);
+	}
+	if (lineSplit.size() == 2 && lineSplit[0] == "client_max_body_size" && checkValidSize(lineSplit[1]))
+	{
+		s.setClientMaxBodySize(std::atoi(lineSplit[1].c_str()));
+		return	(VALID_ARG);
+	}
+	if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDir(lineSplit[1]))
+	{
+		s.setRoot(lineSplit[2]);
+		return (VALID_ARG);
+	}
+	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDir(lineSplit[2]))
+	{
+		s.pushErrorPage(std::pair<int, std::string>(std::atoi(lineSplit[1].c_str()), lineSplit[2]));
+		return (VALID_ARG);
+	}
+	if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDir(lineSplit[1]))
+	{
+		s.setUploadStore(lineSplit[1]);
+		return (VALID_ARG);
+	}
+	if (lineSplit.size() == 1 && lineSplit[0] == "}")
+			return (CLOSE_KEY);
+	return (KO);
+}
+
 int Input::checkServSplit(std::string str, int flag, bool key_open, int i, Server &s)
 {
 	std::vector<std::string> lineSplit = split(str, ' ');
@@ -139,39 +176,9 @@ int Input::checkServSplit(std::string str, int flag, bool key_open, int i, Serve
 	}
 	else if (key_open == true)
 	{
-		if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
-		{
-			s.setListen(std::atoi(lineSplit[1].c_str()));
-			return (VALID_ARG);
-		}
-		if (lineSplit.size() >= 2 && lineSplit[0] == "server_name" && checkValidNames(lineSplit))
-		{
-			for (size_t i = 1; i < lineSplit.size(); i++)
-				s.pushServerName(lineSplit[i]);
-			return	(VALID_ARG);
-		}
-		if (lineSplit.size() == 2 && lineSplit[0] == "client_max_body_size" && checkValidSize(lineSplit[1]))
-		{
-			s.setClientMaxBodySize(std::atoi(lineSplit[1].c_str()));
-			return	(VALID_ARG);
-		}
-		if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDir(lineSplit[1]))
-		{
-			s.setRoot(lineSplit[2]);
-			return (VALID_ARG);
-		}
-		if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDir(lineSplit[2]))
-		{
-			s.pushErrorPage(std::pair<int, std::string>(std::atoi(lineSplit[1].c_str()), lineSplit[2]));
-			return (VALID_ARG);
-		}
-		if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDir(lineSplit[1]))
-		{
-			s.setUploadStore(lineSplit[1]);
-			return (VALID_ARG);
-		}
-		if (lineSplit.size() == 1 && lineSplit[0] == "}")
-			return (CLOSE_KEY);
+		int type = checkVarServer(lineSplit, s);
+		if (type != KO)
+			return (type);
 	}
 	if (lineSplit.size() == 0)
 		return (EMPTY);
@@ -202,7 +209,7 @@ bool Input::checkFormat( Server &s )
 		i++;
 	} while (!file.eof());
 
-	return (1);
+	return (0);
 }
 
 Input::~Input( void )

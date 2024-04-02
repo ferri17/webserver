@@ -22,6 +22,7 @@ class Input
 		int checkValidSize(std::string str);
 		int checkValidDir(std::string str);
 		int checkServSplit(std::string str, int flag, bool key_open, int i, Server &s);
+		int checkVarServer(std::vector<std::string> lineSplit, Server &s);
 	public:
 		Input( void );
 		Input( char *fileToOpen );
