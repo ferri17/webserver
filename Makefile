@@ -27,6 +27,12 @@ DEP = $(OBJ:.o=.d)
 
 all: $(DIR_OBJ) $(NAME)
 
+d: all
+	@echo "$(GREEN)Launch Webserv!$(NC)"
+	@echo "$(GREEN)========================================$(NC)\n"
+	@./webserv ./conf/test.conf
+	@echo "$(GREEN)========================================$(NC)"
+
 $(NAME): $(OBJ)
 	@c++ $(FLAGS) $(DEPFLAGS) $(OBJ) -o $(NAME)
 	@echo "$(GREEN)Webserv compiled!$(NC)"

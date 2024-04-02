@@ -10,8 +10,10 @@ int main(int ac, char **av)
 	try
 	{
 		Input test(av[1]);
-		test.checkFormat();
-		Server s(true);
+		Server s;
+
+		test.checkFormat(s);
+		//s.initDef();
 
 		std::cout << s << std::endl;
 	}

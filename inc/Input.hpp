@@ -5,6 +5,9 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <map>
+
+#include "Server.hpp"
 
 class Input
 {
@@ -18,11 +21,11 @@ class Input
 		int checkValidNames(std::vector<std::string> lineSplit);
 		int checkValidSize(std::string str);
 		int checkValidDir(std::string str);
-		int checkServSplit(std::string str, int flag, bool key_open, int i);
+		int checkServSplit(std::string str, int flag, bool key_open, int i, Server &s);
 	public:
 		Input( void );
 		Input( char *fileToOpen );
-		bool checkFormat( void );
+		bool checkFormat( Server &s );
 		void reopenFile ( void );
 		~Input( void );
 };

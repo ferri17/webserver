@@ -1,8 +1,9 @@
 
 #include "Server.hpp"
 
+Server::Server( void ) {}
 
-Server::Server( void )
+void Server::initDef(void)
 {
 	listen = 4242;
 	server_name.push_back("default.com");
@@ -10,12 +11,6 @@ Server::Server( void )
 	root = ".";
 	upload_store = "/tmp";
 	error_page.insert(std::pair<int, std::string>(4242, "./html/error.html"));
-}
-
-Server::Server( bool init)
-{
-	if (init == true)
-		Server();
 }
 
 /// GET & SET
@@ -32,6 +27,15 @@ void Server::setRoot(const std::string &root_) { root = root_; }
 void Server::setUploadStore(const std::string &uploadStore) { upload_store = uploadStore; }
 void Server::setErrorPage(const std::map<int, std::string> &errorPage) { error_page = errorPage; }
 
+void Server::pushServerName(std::string str)
+{
+	server_name.push_back(str);
+}
+void Server::pushErrorPage(std::pair<int, std::string> node)
+{
+	error_page.insert(node);
+}
+
 Server::~Server( void )
 {
 
@@ -40,17 +44,18 @@ Server::~Server( void )
 std::ostream	&operator<<(std::ostream &out, const Server &nb)
 {
 	out << "Listen: " << nb.getListen() <<std::endl;
-	out << "Names: " << std::endl;
+	out << "ClientMaxBodySize: " << nb.getClientMaxBodySize() <<std::endl;
+	out << "Root: " << nb.getRoot() << std::endl;
+	out << "Upoad Store: "  << nb.getUploadStore() << std::endl;
 	std::vector<std::string> name = nb.getServerName();
 	std::vector<std::string>::iterator it = name.begin();
+	out << "Names: " << std::endl;
 	for (; it != name.end(); it++)
-		out << "\t" << *it <<std::endl;
-	out << "ClientMaxBodySize: " << nb.getClientMaxBodySize() <<std::endl;
-	out << "Root: " << nb.getRoot() <<std::endl;
+		out << "\t- " << *it <<std::endl;
 	out << "Error Page: " << std::endl;
 	std::map<int, std::string> error = nb.getErrorPage();
 	std::map<int, std::string>::iterator itE = error.begin();
 	for (; itE != error.end(); itE++)
-		out << "\t" << itE->second <<std::endl;
+		out << "\t- " << itE->second <<std::endl;
 	return (out);
 }

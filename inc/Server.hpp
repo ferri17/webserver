@@ -16,7 +16,7 @@ class Server
 		std::map<int, std::string>	error_page;
 	public:
 		Server( void );
-		Server( bool init);
+		void initDef(void);
 		int getListen() const;
 		std::vector<std::string> getServerName() const;
 		int getClientMaxBodySize() const;
@@ -29,6 +29,8 @@ class Server
 		void setRoot(const std::string &root_);
 		void setUploadStore(const std::string &uploadStore);
 		void setErrorPage(const std::map<int, std::string> &errorPage);
+		void pushServerName(std::string str);
+		void pushErrorPage(std::pair<int, std::string> node);
 		~Server( void );
 };
 
