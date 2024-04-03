@@ -21,8 +21,10 @@ class Input
 		int checkValidNames(std::vector<std::string> lineSplit);
 		int checkValidSize(std::string str);
 		int checkValidDir(std::string str);
-		int checkServSplit(std::string str, int flag, bool key_open, int i, Server &s);
-		int checkVarServer(std::vector<std::string> lineSplit, Server &s);
+		int checkValidDirSemiColon(std::string str);
+		int checkServSplit(std::string str, int flag, bool key_serv, int i, Server &s);
+		int checkVarServer(std::vector<std::string> lineSplit, int flag, Server &s);
+		int checkLocation(std::vector<std::string> lineSplit ,int flag, Server &s);
 	public:
 		Input( void );
 		Input( char *fileToOpen );

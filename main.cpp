@@ -19,7 +19,7 @@ int main(int ac, char **av)
 			test.checkFormat(s);
 		}
 		std::cout << s << std::endl << std::endl;
-		s.startServ();
+		//s.startServ();
 	}
 	catch(const std::exception& e)
 	{

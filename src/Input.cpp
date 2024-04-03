@@ -105,6 +105,18 @@ int Input::checkValidSize(std::string str)
 
 int Input::checkValidDir(std::string str)
 {
+	if (str.size() == 0)
+		return (0);
+	for (int i = 0; str[i]; i++)
+	{
+		if(isalnum(str[i]) == false && str[i] != '.' && str[i] != '-' && str[i] != '_' && str[i] != '/')
+			return (0);
+	}
+	return (1);
+}
+
+int Input::checkValidDirSemiColon(std::string str)
+{
 	if (str[str.size() - 1] == ';')
 		str.erase(str.size() - 1);
 	else
@@ -119,7 +131,7 @@ int Input::checkValidDir(std::string str)
 	return (1);
 }
 
-int Input::checkVarServer(std::vector<std::string> lineSplit, Server &s)
+int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &s)
 {
 	if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
 	{
@@ -137,33 +149,47 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, Server &s)
 		s.setClientMaxBodySize(std::atoi(lineSplit[1].c_str()));
 		return	(VALID_ARG);
 	}
-	if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDir(lineSplit[1]))
+	if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDirSemiColon(lineSplit[1]))
 	{
 		s.setRoot(lineSplit[2]);
 		return (VALID_ARG);
 	}
-	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDir(lineSplit[2]))
+	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDirSemiColon(lineSplit[2]))
 	{
 		s.pushErrorPage(std::pair<int, std::string>(std::atoi(lineSplit[1].c_str()), lineSplit[2]));
 		return (VALID_ARG);
 	}
-	if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDir(lineSplit[1]))
+	if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDirSemiColon(lineSplit[1]))
 	{
 		s.setUploadStore(lineSplit[1]);
 		return (VALID_ARG);
 	}
-	if (lineSplit.size() == 1 && lineSplit[0] == "}")
-			return (CLOSE_KEY);
+	if (lineSplit.size() == 1 && lineSplit[0] == "}" && flag == VALID_ARG)
+		return (CLOSE_KEY);
+	return (checkLocation(lineSplit, flag, s));
+}
+
+int Input::checkLocation(std::vector<std::string> lineSplit, int flag, Server &s)
+{
+	(void)s;
+	if (lineSplit.size() == 2 && lineSplit[0] == "location" && checkValidDir(lineSplit[1]))
+		return(MISS_KEY_LOC);
+	else if (lineSplit.size() == 1 && lineSplit[0] == "{" && flag == MISS_KEY_LOC)
+		return (OPEN_KEY_LOC);
+	else if (lineSplit.size() == 3 && lineSplit[0] == "location" && checkValidDir(lineSplit[1]) && lineSplit[2] == "{")
+		return(OPEN_KEY_LOC);
+	else if (lineSplit.size() == 1 && lineSplit[0] == "}" && (flag == OPEN_KEY_LOC || flag == EMPTY))
+		return(VALID_ARG);
 	return (KO);
 }
 
-int Input::checkServSplit(std::string str, int flag, bool key_open, int i, Server &s)
+int Input::checkServSplit(std::string str, int flag, bool key_serv, int i, Server &s)
 {
 	std::vector<std::string> lineSplit = split(str, ' ');
 
 	if (lineSplit.size() > 0 && lineSplit[0].find('#') == 0)
 		return (flag);
-	if (key_open == false)
+	if (key_serv == false)
 	{
 		if (lineSplit.size() == 1 && lineSplit[0] == "server" && (flag == NOT_INIT || flag == EMPTY))
 			return(MISS_KEY);
@@ -174,14 +200,14 @@ int Input::checkServSplit(std::string str, int flag, bool key_open, int i, Serve
 		else if (lineSplit.size() == 2 && lineSplit[0] == "server" && lineSplit[1] == "{")
 			return(OPEN_KEY);
 	}
-	else if (key_open == true)
+	else if (key_serv == true)
 	{
-		int type = checkVarServer(lineSplit, s);
+		int type = checkVarServer(lineSplit, flag, s);
 		if (type != KO)
 			return (type);
 	}
 	if (lineSplit.size() == 0)
-		return (EMPTY);
+		return (flag);
 	throwExeptionFormat(str, i);
 	return (KO);
 }
@@ -200,10 +226,12 @@ bool Input::checkFormat( Server &s )
 		if (flag == OPEN_KEY)
 		{
 			key_open = true;
+			correct = false;
 		}
-		else if (flag == CLOSE_KEY)
+		else if (flag == CLOSE_KEY && key_open)
 		{
 			key_open = false;
+			correct = true;
 			std::cout << GREEN "SERVER CREATED" NC << std::endl;
 		}
 		i++;

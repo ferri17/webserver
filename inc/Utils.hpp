@@ -12,6 +12,9 @@
 #define COMENT 3
 #define EMPTY 4
 #define CLOSE_KEY 5
+#define MISS_KEY_LOC 6
+#define OPEN_KEY_LOC 7
+#define CLOSE_KEY_LOC 8
 #define VALID_ARG 10
 
 #define BYTES 0

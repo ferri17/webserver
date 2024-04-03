@@ -39,7 +39,7 @@ void Server::pushErrorPage(std::pair<int, std::string> node)
 	
 std::string checkLine(std::vector<std::string> line)
 {
-	if (line.size() == 3 && line[0] == "GET")
+	if (line.size() == 3 && (line[0] == "GET" || line[0] == "POST"))
 	{
 		return (line[1]);
 	}
@@ -48,82 +48,80 @@ std::string checkLine(std::vector<std::string> line)
 
 void Server::startServ( void )
 {
-    // Crear el socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
         std::cerr << "Error al crear el socket" << std::endl;
     }
 
-    // Especificar la dirección
     sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(_listen);
     serverAddress.sin_addr.s_addr = INADDR_ANY;
 
-    // Vincular el socket
     if (bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1) {
         std::cerr << "Error al vincular el socket" << std::endl;
         close(serverSocket);
     }
 
-    // Escuchar en el socket
     if (listen(serverSocket, 5) == -1) {
         std::cerr << "Error al escuchar en el socket" << std::endl;
         close(serverSocket);
     }
 
-
-    // Aceptar la solicitud de conexión
-    int clientSocket = accept(serverSocket, nullptr, nullptr);
-    if (clientSocket == -1) {
-        std::cerr << "Error al aceptar la conexión" << std::endl;
-        close(serverSocket);
-    }
-	
 	char buffer[1024] = { 0 }; 
-    recv(clientSocket, buffer, sizeof(buffer), 0); 
 
-	std::vector<std::string> lines = split(buffer, '\n');
-	std::string filename;
-	
-	for (size_t i = 0; i < lines.size(); i++)
+	while (1)
 	{
-		filename = checkLine(split(lines[i], ' '));
-		if (!filename.empty())
+		int clientSocket = accept(serverSocket, nullptr, nullptr);
+		if (clientSocket == -1) {
+			std::cerr << "Error al aceptar la conexión" << std::endl;
+			close(serverSocket);
+		}
+		recv(clientSocket, buffer, sizeof(buffer), 0); 
+
+		std::cout << buffer << std::endl;
+
+		std::vector<std::string> lines = split(buffer, '\n');
+		std::string filename;
+		
+		for (size_t i = 0; i < lines.size(); i++)
+		{
+			filename = checkLine(split(lines[i], ' '));
+			if (!filename.empty())
+				break;
+
+		}
+		if (filename == "/")
+			filename = "./html/index.html";
+		else
+			filename = "./html/not_default.html";
+		std::ifstream file;
+
+		file.open(filename);
+		if (!file.is_open()) {
+			std::cerr << "Error al abrir el archivo HTML" << std::endl;
 			break;
+		}
 
+		std::string html;
+
+		std::getline(file, html, '\0');
+
+		file.close();
+
+		std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
+		// Enviar HTML al cliente
+		if (send(clientSocket, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
+			std::cerr << "Error al enviar HTML al cliente" << std::endl;
+			break;
+		}
+    	close(clientSocket);
 	}
-	if (filename == "/")
-		filename = "./html/index.html";
-	else
-		filename = "./html/not_default.html";
-    std::ifstream file;
-
-	file.open(filename);
-    if (!file.is_open()) {
-        std::cerr << "Error al abrir el archivo HTML" << std::endl;
-        close(clientSocket);
-        close(serverSocket);
-        return ;
-    }
-
-	std::string html;
-
-	std::getline(file, html, '\0');
-
-    file.close();
-
-	std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
-    // Enviar HTML al cliente
-    if (send(clientSocket, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
-        std::cerr << "Error al enviar HTML al cliente" << std::endl;
-        close(clientSocket);
-        close(serverSocket);
-    }
+	
+    
+    close(serverSocket);
 
     // Cerrar los sockets
-    close(clientSocket);
-    close(serverSocket);
 }
 
 
