@@ -19,6 +19,8 @@ int main(int ac, char **av)
 			test.checkFormat(s);
 		}
 		std::cout << s << std::endl << std::endl;
+		Location &l = s.getLocations("/a");
+		std::cout  << l << std::endl;
 		//s.startServ();
 	}
 	catch(const std::exception& e)

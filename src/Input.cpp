@@ -51,7 +51,7 @@ int	Input::limitsNum(std::string num, int min, int max)
 	return (0);
 }
 
-int Input::checkValidNames(std::vector<std::string> lineSplit)
+int Input::checkValidNames(std::vector<std::string> &lineSplit)
 {
 	std::vector<std::string>::iterator it = lineSplit.begin();
 	
@@ -115,7 +115,7 @@ int Input::checkValidDir(std::string str)
 	return (1);
 }
 
-int Input::checkValidDirSemiColon(std::string str)
+int Input::checkValidDirSemiColon(std::string &str)
 {
 	if (str[str.size() - 1] == ';')
 		str.erase(str.size() - 1);
@@ -133,6 +133,8 @@ int Input::checkValidDirSemiColon(std::string str)
 
 int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &s)
 {
+	if ((lineSplit.size() >= 2 && lineSplit[0] == "location") || flag == OPEN_KEY_LOC || flag == MISS_KEY_LOC || flag == VALID_ARG_LOC)
+		return (checkLocation(lineSplit, flag, s));
 	if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
 	{
 		s.setListen(std::atoi(lineSplit[1].c_str()));
@@ -166,20 +168,119 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 	}
 	if (lineSplit.size() == 1 && lineSplit[0] == "}" && flag == VALID_ARG)
 		return (CLOSE_KEY);
-	return (checkLocation(lineSplit, flag, s));
+	return (KO);
+}
+
+int Input::checkValidAutoIndex(std::string lineSplit)
+{
+	if (lineSplit == "on;" || lineSplit == "off;")
+		return (1);
+	return (0);
+}
+
+int Input::checkValidPag(std::string &str)
+{
+	if (str[str.size() - 1] == ';')
+		str.erase(str.size() - 1);
+	else
+		return (0);
+	if (str.size() == 0)
+		return (0);
+	for (int i = 0; str[i]; i++)
+	{
+		if(isalnum(str[i]) == false && str[i] != '.'  && str[i] != ':' && str[i] != '-' && str[i] != '_' && str[i] != '/')
+			return (0);
+	}
+	return (1);
+}
+
+int Input::checkValidCgi(std::string str)
+{
+	if (str == ".sh") ////// sh ?
+		return (1);
+	return (0);
+}
+
+int Input::checkValidMethods(std::vector<std::string> &lineSplit)
+{
+	std::string &str = lineSplit[lineSplit.size() - 1];
+
+	if (str[str.size() - 1] == ';')
+		lineSplit[lineSplit.size() - 1].erase(str.size() - 1);
+	else
+		return (0);
+	if (lineSplit.size() == 2 && lineSplit[lineSplit.size() - 1].size() == 0)
+		return (0);
+	for (size_t i = 1; i < lineSplit.size(); i++)
+	{
+		if (lineSplit[i] != "POST" && lineSplit[i] != "GET" 
+		&& lineSplit[i] != "DELETE" && lineSplit[i] != "HEAD")
+			return (1);
+	}
+	return (0);
+}
+
+int Input::checkLocationVar(std::vector<std::string> lineSplit, Location &loc)
+{
+	if (lineSplit.size() == 2 && lineSplit[0] == "autoindex" && checkValidAutoIndex(lineSplit[1]))
+	{
+		loc.setAutoindex(lineSplit[1] == "on;");
+ 		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDirSemiColon(lineSplit[2]))
+	{
+		loc.pushErrorPage(std::pair<int, std::string>(std::atoi(lineSplit[1].c_str()), lineSplit[2]));
+		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDirSemiColon(lineSplit[1]))
+	{
+		loc.setUploadStore(lineSplit[1]);
+		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() == 2 && lineSplit[0] == "return" && checkValidPag(lineSplit[1]))
+	{
+		loc.setReturnPag(lineSplit[1]);
+		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() == 3 && lineSplit[0] == "cgi" && checkValidCgi(lineSplit[1]) && checkValidDirSemiColon(lineSplit[2]))
+	{
+		loc.setCgi((t_cgi_type){lineSplit[1], lineSplit[2]});
+		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() >= 2 && lineSplit[0] == "allow_methods" && checkValidMethods(lineSplit))
+	{
+		for (size_t i = 1; i < lineSplit.size(); i++)
+			loc.pushAllowMethods(lineSplit[i]);
+		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() >= 2 && lineSplit[0] == "index" && checkValidNames(lineSplit))
+	{
+		for (size_t i = 1; i < lineSplit.size(); i++)
+			loc.pushIndex(lineSplit[i]);
+		return (VALID_ARG_LOC);
+	}
+	return (KO);
 }
 
 int Input::checkLocation(std::vector<std::string> lineSplit, int flag, Server &s)
 {
-	(void)s;
+	static std::string dirLoc;
 	if (lineSplit.size() == 2 && lineSplit[0] == "location" && checkValidDir(lineSplit[1]))
+	{
+		dirLoc = lineSplit[1];
 		return(MISS_KEY_LOC);
+	}
 	else if (lineSplit.size() == 1 && lineSplit[0] == "{" && flag == MISS_KEY_LOC)
 		return (OPEN_KEY_LOC);
 	else if (lineSplit.size() == 3 && lineSplit[0] == "location" && checkValidDir(lineSplit[1]) && lineSplit[2] == "{")
+	{
+		dirLoc = lineSplit[1];
 		return(OPEN_KEY_LOC);
-	else if (lineSplit.size() == 1 && lineSplit[0] == "}" && (flag == OPEN_KEY_LOC || flag == EMPTY))
+	}
+	else if (lineSplit.size() == 1 && lineSplit[0] == "}" && (flag == OPEN_KEY_LOC || flag == VALID_ARG_LOC))
 		return(VALID_ARG);
+	else if (flag == OPEN_KEY_LOC || flag == VALID_ARG_LOC)
+		return (checkLocationVar(lineSplit, s.getLocations(dirLoc)));
 	return (KO);
 }
 

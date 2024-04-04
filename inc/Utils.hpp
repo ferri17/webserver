@@ -16,6 +16,7 @@
 #define OPEN_KEY_LOC 7
 #define CLOSE_KEY_LOC 8
 #define VALID_ARG 10
+#define VALID_ARG_LOC 11
 
 #define BYTES 0
 #define KILOS 1

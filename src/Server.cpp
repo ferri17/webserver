@@ -20,22 +20,30 @@ int Server::getClientMaxBodySize() const { return _client_max_body_size; }
 std::string Server::getRoot() const { return _root; }
 std::string Server::getUploadStore() const { return _upload_store; }
 std::map<int, std::string> Server::getErrorPage() const { return _error_page; }
+
+Location &Server::getLocations(std::string dir)
+{
+	return (_locations[dir]);
+}
+
+void Server::setLocations(const std::map<std::string, Location> &locations) { _locations = locations; }
 void Server::setListen(int listen_) { _listen = listen_; }
 void Server::setServerName(const std::vector<std::string> &serverName) { _server_name = serverName; }
 void Server::setClientMaxBodySize(int clientMaxBodySize) { _client_max_body_size = clientMaxBodySize; }
 void Server::setRoot(const std::string &root) { _root = root; }
 void Server::setUploadStore(const std::string &uploadStore) { _upload_store = uploadStore; }
 void Server::setErrorPage(const std::map<int, std::string> &errorPage) { _error_page = errorPage; }
+void Server::pushLoactions(const std::pair<std::string, Location> node) { _locations.insert(node); }
 
 void Server::pushServerName(std::string str)
 {
 	_server_name.push_back(str);
 }
+
 void Server::pushErrorPage(std::pair<int, std::string> node)
 {
 	_error_page.insert(node);
 }
-
 	
 std::string checkLine(std::vector<std::string> line)
 {
