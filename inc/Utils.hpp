@@ -22,5 +22,8 @@
 #define MEGAS 2
 #define GIGAS 3
 
+// Removes duplicated delimiters
 std::vector<std::string> split(const std::string& s, char delimiter);
+// Stores as an empty string repeated delimiters
+std::vector<std::string> split_r(const std::string& s, char delimiter);
 bool isInt(const std::string & value);
