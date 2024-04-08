@@ -4,6 +4,7 @@
 
 Location::Location( void )
 {
+	close = false;
 }
 
 void Location::setAutoindex(bool autoindex) { _autoindex = autoindex; }
@@ -13,6 +14,8 @@ void Location::setUploadStore(const std::string &upload_store) { _upload_store =
 void Location::setReturnPag(const std::string &returnPag) { _returnPag = returnPag; }
 void Location::setIndex(const std::vector<std::string> &index) { _index = index; }
 bool Location::getAutoindex() const { return _autoindex; }
+void Location::setClose(bool close_) { close = close_; }
+bool Location::getClose() const { return close; }
 std::map<int, std::string> Location::getErrorPage() const { return _error_page; }
 std::vector<std::string > Location::getAllowMethods() const { return _allow_methods; }
 std::string Location::getUploadStore() const { return _upload_store; }
@@ -44,6 +47,6 @@ std::ostream	&operator<<(std::ostream &out, const Location &nb)
 	out << "CGI: " << std::endl;
 	std::vector<t_cgi_type> cgi = nb.getCgi();
 	for (size_t i = 0; i < cgi.size(); i++)
-		out << "\t- " << cgi[i].type << "---" << cgi[i].file <<std::endl;
+		out << "\t- " << cgi[i].type << " --- " << cgi[i].file <<std::endl;
 	return (out);
 }

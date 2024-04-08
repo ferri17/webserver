@@ -1,7 +1,11 @@
 
 #include "Server.hpp"
 
-Server::Server( void ) {}
+Server::Server( void )
+{
+	_listen = -1;
+	_client_max_body_size = -1;
+}
 
 void Server::initDef(void)
 {
@@ -24,6 +28,10 @@ std::map<int, std::string> Server::getErrorPage() const { return _error_page; }
 Location &Server::getLocations(std::string dir)
 {
 	return (_locations[dir]);
+}
+std::map<std::string, Location> &Server::getLocations()
+{
+	return (_locations);
 }
 
 void Server::setLocations(const std::map<std::string, Location> &locations) { _locations = locations; }
@@ -99,29 +107,31 @@ void Server::startServ( void )
 				break;
 
 		}
-		if (filename == "/")
-			filename = "./html/index.html";
-		else
-			filename = "./html/not_default.html";
-		std::ifstream file;
+		std::cout << "hola" << std::endl;
+		std::map<std::string ,Location>::iterator it = _locations.find(filename);
 
-		file.open(filename);
-		if (!file.is_open()) {
-			std::cerr << "Error al abrir el archivo HTML" << std::endl;
-			break;
-		}
+		if (it != _locations.end())
+		{
+			std::ifstream file;
+			filename = "./html/" + filename;
+			file.open(filename);
+			if (!file.is_open()) {
+				std::cerr << "Error al abrir el archivo HTML" << std::endl;
+				break;
+			}
 
-		std::string html;
+			std::string html;
 
-		std::getline(file, html, '\0');
+			std::getline(file, html, '\0');
 
-		file.close();
+			file.close();
 
-		std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
-		// Enviar HTML al cliente
-		if (send(clientSocket, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
-			std::cerr << "Error al enviar HTML al cliente" << std::endl;
-			break;
+			std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
+			// Enviar HTML al cliente
+			if (send(clientSocket, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
+				std::cerr << "Error al enviar HTML al cliente" << std::endl;
+				break;
+			}
 		}
     	close(clientSocket);
 	}
@@ -130,6 +140,18 @@ void Server::startServ( void )
     close(serverSocket);
 
     // Cerrar los sockets
+}
+
+
+void Server::clean( void )
+{
+	_listen = -1;
+	_client_max_body_size = -1;
+	_root.clear();
+	_upload_store.clear();
+	_error_page.clear();
+	_server_name.clear();
+	_locations.clear();
 }
 
 

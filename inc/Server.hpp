@@ -32,6 +32,7 @@ class Server
 		std::string getRoot() const;
 		std::string getUploadStore() const;
 		Location &getLocations(std::string const dir);
+		std::map<std::string, Location> &getLocations();
 		std::map<int, std::string> getErrorPage() const;
 		void setListen(int listen_);
 		void setServerName(const std::vector<std::string> &serverName);
@@ -44,6 +45,7 @@ class Server
 		void pushServerName(std::string str);
 		void pushErrorPage(std::pair<int, std::string> node);
 		//END
+		void clean( void );
 		~Server( void );
 };
 

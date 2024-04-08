@@ -34,7 +34,7 @@ class Input
 	public:
 		Input( void );
 		Input( char *fileToOpen );
-		bool checkFormat( Server &s );
+		bool checkFormat( std::vector<Server> &s );
 		void reopenFile ( void );
 		~Input( void );
 };

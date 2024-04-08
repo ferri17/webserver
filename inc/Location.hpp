@@ -20,6 +20,7 @@ class Location
 			std::vector<t_cgi_type> _cgi;
 			std::string _returnPag;
 			std::vector<std::string> _index;
+			bool close;
 	public:
 		Location( void );
 		~Location( void );
@@ -39,6 +40,8 @@ class Location
 		std::vector<std::string> getIndex() const;
 		void pushErrorPage(std::pair<int, std::string> node);
 		void pushAllowMethods(std::string methods);
+		void setClose(bool close_);
+		bool getClose() const;
 		void pushIndex(std::string index);
 };
 

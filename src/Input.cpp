@@ -68,7 +68,7 @@ int Input::checkValidNames(std::vector<std::string> &lineSplit)
 	{
 		for (int i = 0; (*it)[i]; i++)
 		{
-			if(isalnum((*it)[i]) == false && (*it)[i] != '.' && (*it)[i] != '-')
+			if(isalnum((*it)[i]) == false && (*it)[i] != '.' && (*it)[i] != '-' && (*it)[i] != '_')
 				return (0);
 		}
 	}
@@ -215,13 +215,15 @@ int Input::checkValidMethods(std::vector<std::string> &lineSplit)
 	{
 		if (lineSplit[i] != "POST" && lineSplit[i] != "GET" 
 		&& lineSplit[i] != "DELETE" && lineSplit[i] != "HEAD")
-			return (1);
+			return (0);
 	}
-	return (0);
+	return (1);
 }
 
 int Input::checkLocationVar(std::vector<std::string> lineSplit, Location &loc)
 {
+	if (loc.getClose() == true)
+		return (VALID_ARG_LOC);
 	if (lineSplit.size() == 2 && lineSplit[0] == "autoindex" && checkValidAutoIndex(lineSplit[1]))
 	{
 		loc.setAutoindex(lineSplit[1] == "on;");
@@ -278,7 +280,10 @@ int Input::checkLocation(std::vector<std::string> lineSplit, int flag, Server &s
 		return(OPEN_KEY_LOC);
 	}
 	else if (lineSplit.size() == 1 && lineSplit[0] == "}" && (flag == OPEN_KEY_LOC || flag == VALID_ARG_LOC))
+	{
+		s.getLocations(dirLoc).setClose(true);
 		return(VALID_ARG);
+	}
 	else if (flag == OPEN_KEY_LOC || flag == VALID_ARG_LOC)
 		return (checkLocationVar(lineSplit, s.getLocations(dirLoc)));
 	return (KO);
@@ -292,9 +297,9 @@ int Input::checkServSplit(std::string str, int flag, bool key_serv, int i, Serve
 		return (flag);
 	if (key_serv == false)
 	{
-		if (lineSplit.size() == 1 && lineSplit[0] == "server" && (flag == NOT_INIT || flag == EMPTY))
+		if (lineSplit.size() == 1 && lineSplit[0] == "server" && (flag == NOT_INIT || flag == CLOSE_KEY || flag == EMPTY))
 			return(MISS_KEY);
-		else if (lineSplit.size() == 1 && lineSplit[0] == "server{" && (flag == NOT_INIT || flag == EMPTY))
+		else if (lineSplit.size() == 1 && lineSplit[0] == "server{" && (flag == NOT_INIT || flag == CLOSE_KEY || flag == EMPTY))
 			return (OPEN_KEY);
 		else if (lineSplit.size() == 1 && lineSplit[0] == "{" && flag == MISS_KEY)
 			return (OPEN_KEY);
@@ -313,12 +318,13 @@ int Input::checkServSplit(std::string str, int flag, bool key_serv, int i, Serve
 	return (KO);
 }
 
-bool Input::checkFormat( Server &s )
+bool Input::checkFormat( std::vector<Server> &servers )
 {
 	std::string line;
 	int flag = NOT_INIT;
 	bool key_open = false;
 	int i = 1;
+	Server s;
 	do
 	{
 		std::getline(file, line);
@@ -333,11 +339,12 @@ bool Input::checkFormat( Server &s )
 		{
 			key_open = false;
 			correct = true;
+			servers.push_back(s);
+			s.clean();
 			std::cout << GREEN "SERVER CREATED" NC << std::endl;
 		}
 		i++;
 	} while (!file.eof());
-
 	return (0);
 }
 
