@@ -22,8 +22,15 @@
 #define MEGAS 2
 #define GIGAS 3
 
+#define CR '\r'
+#define LF '\n'
+#define SP ' '
+#define HTAB '\t'
+
 // Removes duplicated delimiters
 std::vector<std::string> split(const std::string& s, char delimiter);
 // Stores as an empty string repeated delimiters
 std::vector<std::string> split_r(const std::string& s, char delimiter);
-bool isInt(const std::string & value);
+bool	isInt(const std::string & value);
+bool	isUsAscii(int c);
+bool	isOWS(int c);

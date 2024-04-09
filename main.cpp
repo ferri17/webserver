@@ -9,7 +9,7 @@ int main(int ac, char **av)
 	(void)ac;
 	(void)av;
 
-	std::ifstream	reqFile("request.http");
+	std::ifstream	reqFile("files/request.http");
 
 	// Determine the size of the file
     reqFile.seekg(0, std::ios::end);
@@ -29,8 +29,12 @@ int main(int ac, char **av)
 	//std::cout << "File content:" << std::endl << buffer;
 
 	//Parse request in Request class
-	Request	requestMssg;
-	requestMssg.parseRequest(buffer);
+	Request	requestMssg(buffer);
+
+	if (!requestMssg._errorCode)
+		std::cout << requestMssg << std::endl;
+	else
+		std::cout << "Error code: " << requestMssg._errorCode << std::endl;
 
 	return (0);
 }

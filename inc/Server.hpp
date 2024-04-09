@@ -8,7 +8,9 @@
 #include <fstream>
 #include <netinet/in.h>
 #include <sys/socket.h>
-#include <unistd.h> 
+#include <unistd.h>
+
+#define MAX_LEN_REQUEST_LINE 160000
 
 class Server
 {
@@ -40,6 +42,8 @@ class Server
 		void pushErrorPage(std::pair<int, std::string> node);
 		//END
 		~Server( void );
+
+		static bool	isServerMethod(std::string & method);
 };
 
 std::ostream	&operator<< (std::ostream &out, const Server &nb);

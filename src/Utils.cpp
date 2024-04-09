@@ -32,3 +32,14 @@ bool isInt(const std::string & value)
 		return (true);
 	return (false);
 }
+
+bool	isUsAscii(int c)
+{
+	return (c >= 0 && c <= 127);
+}
+
+bool	isOWS(int c)
+{
+	return (c == HTAB || c == SP);
+}
+
