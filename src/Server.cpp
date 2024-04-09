@@ -1,5 +1,6 @@
 
 #include "Server.hpp"
+#include <poll.h>
 
 Server::Server( void )
 {
@@ -62,84 +63,114 @@ std::string checkLine(std::vector<std::string> line)
 	return (NULL);
 }
 
+int Server::initSocket()
+{ 
+	int serverSockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSockfd == -1)
+		throw std::invalid_argument("Error creating socket");
+	
+	struct sockaddr_in serverAddr;
+	serverAddr.sin_family = AF_INET;
+	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serverAddr.sin_port = htons(_listen);
+	if (bind(serverSockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
+	{
+        close(serverSockfd);
+    	throw std::invalid_argument("Error al enlazar el socket a la dirección y puerto");
+    }
+	if (listen(serverSockfd, 5) == -1)
+	{
+        close(serverSockfd);
+    	throw std::invalid_argument("Error al intentar escuchar por conexiones entrantes");
+    }
+	return (serverSockfd);
+}
+
 void Server::startServ( void )
 {
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == -1) {
-        std::cerr << "Error al crear el socket" << std::endl;
-    }
+    int serverSocket = initSocket();
 
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(_listen);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
+	std::vector<pollfd> fds;
+    fds.push_back(((pollfd){serverSocket, POLLIN, -1}));
 
-    if (bind(serverSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1) {
-        std::cerr << "Error al vincular el socket" << std::endl;
-        close(serverSocket);
-    }
-
-    if (listen(serverSocket, 5) == -1) {
-        std::cerr << "Error al escuchar en el socket" << std::endl;
-        close(serverSocket);
-    }
-
-	char buffer[1024] = { 0 }; 
-
-	while (1)
+	while (true)
 	{
-		int clientSocket = accept(serverSocket, nullptr, nullptr);
-		if (clientSocket == -1) {
-			std::cerr << "Error al aceptar la conexión" << std::endl;
-			close(serverSocket);
-		}
-		recv(clientSocket, buffer, sizeof(buffer), 0); 
-
-		std::cout << buffer << std::endl;
-
-		std::vector<std::string> lines = split(buffer, '\n');
-		std::string filename;
-		
-		for (size_t i = 0; i < lines.size(); i++)
-		{
-			filename = checkLine(split(lines[i], ' '));
-			if (!filename.empty())
-				break;
-
-		}
-		std::cout << "hola" << std::endl;
-		std::map<std::string ,Location>::iterator it = _locations.find(filename);
-
-		if (it != _locations.end())
-		{
-			std::ifstream file;
-			filename = "./html/" + filename;
-			file.open(filename);
-			if (!file.is_open()) {
-				std::cerr << "Error al abrir el archivo HTML" << std::endl;
-				break;
+        int ret = poll(fds.data(), fds.size(), -1); // Espera indefinidamente
+        if (ret == -1) {
+            std::cerr << "Error en poll()\n";
+            break;
+        }
+		if (fds[0].revents & POLLIN) {
+			// Nueva conexión entrante
+			struct sockaddr_in clientAddr;
+			socklen_t clientAddrLen = sizeof(clientAddr);
+			int clientSockfd = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+			if (clientSockfd == -1) {
+				std::cerr << "Error al aceptar la conexión entrante\n";
+				continue;
 			}
-
-			std::string html;
-
-			std::getline(file, html, '\0');
-
-			file.close();
-
-			std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
-			// Enviar HTML al cliente
-			if (send(clientSocket, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
-				std::cerr << "Error al enviar HTML al cliente" << std::endl;
-				break;
-			}
+			std::cout << "Nueva conexión establecida\n";
+			fds.push_back(((pollfd){clientSockfd, POLLIN, -1}));
 		}
-    	close(clientSocket);
-	}
-	
-    
-    close(serverSocket);
 
-    // Cerrar los sockets
+		for (size_t i = 1; i < fds.size(); ++i)
+		{
+			if (fds[i].revents & POLLIN)
+			{
+				char buffer[1024];
+				ssize_t bytesRead = recv(fds[i].fd, buffer, sizeof(buffer), 0);
+				if (bytesRead <= 0) {
+					if (bytesRead == 0)
+						std::cout << "Cliente desconectado\n";
+					else
+						std::cerr << "Error al recibir datos del cliente\n";
+					close(fds[i].fd);
+					fds.erase(fds.begin() + i);
+					--i; // Ajustar el índice ya que se eliminó un elemento
+					continue;
+				}
+				std::vector<std::string> lines = split(buffer, '\n');
+				std::string filename;
+				
+				for (size_t i = 0; i < lines.size(); i++)
+				{
+					filename = checkLine(split(lines[i], ' '));
+					if (!filename.empty())
+					{
+						break;
+					}
+				}
+				std::map<std::string ,Location>::iterator it = _locations.find(filename);
+
+				if (it != _locations.end())
+				{
+					filename = "/" + it->second.getIndex()[0];
+					std::ifstream file;
+					filename = "./html" + filename;
+					file.open(filename);
+					if (!file.is_open()) {
+						std::cerr << "Error al abrir el archivo HTML" << std::endl;
+						break;
+					}
+
+					std::string html;
+
+					std::getline(file, html, '\0');
+
+					file.close();
+
+					std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
+					// Enviar HTML al cliente
+					if (send(fds[i].fd, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
+						std::cerr << "Error al enviar HTML al cliente" << std::endl;
+						break;
+					}
+				}
+				buffer[bytesRead] = '\0';
+				std::cout << "Mensaje recibido del cliente: " << buffer << std::endl;
+			}
+        }
+    }
 }
 
 

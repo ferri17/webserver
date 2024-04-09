@@ -21,6 +21,7 @@ class Server
 		std::string					_upload_store;
 		std::map<int, std::string>	_error_page;
 		std::map<std::string, Location> _locations;
+		int initSocket();
 	public:
 		Server( void );
 		void initDef( void );
