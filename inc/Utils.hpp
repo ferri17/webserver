@@ -26,6 +26,9 @@
 #define LF '\n'
 #define SP ' '
 #define HTAB '\t'
+#define COLON ':'
+#define HYPHEN '-'
+#define USCORE '_'
 
 // Removes duplicated delimiters
 std::vector<std::string> split(const std::string& s, char delimiter);

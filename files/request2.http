@@ -1,6 +1,4 @@
-
-
-
-
-GET /hello.txt HTTP/1.1
-
+GET /api/data HTTP/1.1
+Host: api.example.com
+Accept: application/json
+Authorization: Bearer abc123

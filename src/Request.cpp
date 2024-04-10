@@ -38,7 +38,16 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 {
 	for (std::vector<std::string>::iterator it = headerVec.begin(); it != headerVec.end(); it++)
 	{
-		std::string	headerLine = *it;
+		std::vector<std::string>	headerLine = split_r(*it, COLON);
+
+		if (headerLine.size() != 2)
+			return (this->_errorCode = BAD_REQUEST, false);
+		std::string	fieldName = headerLine.front();
+		std::string	fieldValue = headerLine.back();
+
+		if (!Request::isValidFieldName(fieldName) || !Request::isValidFieldValue(fieldValue))
+			return (this->_errorCode = BAD_REQUEST, false);
+		this->_headerField.insert(std::pair<std::string, std::string>(headerLine.front(), headerLine.back()));
 	}
 	return (true);
 }
@@ -178,6 +187,23 @@ Request::Request(const char * req)
 	// Check if its better to throw execeptiooooons insetad of if'sssss
 }
 
+bool	Request::isValidFieldName(std::string & str)
+{
+	for (size_t i = 0; i < str.length(); i++)
+	{
+		if (!std::isalnum(str.at(i)) && str.at(i) != HYPHEN && str.at(i) != USCORE)
+			return (false);
+	}
+	return (true);
+}
+
+bool	Request::isValidFieldValue(std::string & str)
+{
+	(void)str;
+	return (true);
+}
+
+
 std::ostream	&operator<<(std::ostream &out, const Request &req)
 {
 	out << "Request line: " <<std::endl;
@@ -185,5 +211,9 @@ std::ostream	&operator<<(std::ostream &out, const Request &req)
 	out << "\tRequest target: " << req._requestLine._requestTarget <<std::endl;
 	out << "\tVersion: " << req._requestLine._protocolVersion <<std::endl;
 	out << "Header fields: " << std::endl;
+	for (std::map<std::string, std::string>::const_iterator it = req._headerField.begin(); it != req._headerField.end(); it++)
+	{
+		out << "\t" << (*it).first << ":" << (*it).second << std::endl;
+	}
 	return (out);
 }

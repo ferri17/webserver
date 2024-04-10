@@ -3,7 +3,7 @@
 #include "Server.hpp"
 #include "Utils.hpp"
 #include "ErrorsHttp.hpp"
-#include <unordered_map>
+#include <map>
 #include <iostream>
 #include <ctype.h>
 
@@ -17,17 +17,18 @@ typedef struct	requestLine
 class	Request
 {
 	private:
-
-		void	skipLeadingGarbage(std::string & req);
-		bool	parseRequestLine(std::string & requestLineStr);
-		bool	parseHeaderFields(std::vector<std::string> & headerVec);
+		static bool	isValidFieldName(std::string & str);
+		static bool	isValidFieldValue(std::string & str);
+		void		skipLeadingGarbage(std::string & req);
+		bool		parseRequestLine(std::string & requestLineStr);
+		bool		parseHeaderFields(std::vector<std::string> & headerVec);
 	public:
 
 		//temporary public to find errors
-		requestLine										_requestLine;
-		std::unordered_map<std::string, std::string>	_headerField;
-		std::string										_bodyMssg;
-		short int										_errorCode;
+		requestLine							_requestLine;
+		std::map<std::string, std::string>	_headerField;
+		std::string							_bodyMssg;
+		short int							_errorCode;
 		//
 
 
