@@ -100,58 +100,36 @@ void Server::startServ( void )
             std::cerr << "Error en poll()\n";
             break;
         }
-		if (fds[0].revents & POLLIN) {
-			// Nueva conexión entrante
-			struct sockaddr_in clientAddr;
-			socklen_t clientAddrLen = sizeof(clientAddr);
-			int clientSockfd = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-			if (clientSockfd == -1) {
-				std::cerr << "Error al aceptar la conexión entrante\n";
-				continue;
-			}
-			std::cout << "Nueva conexión establecida\n";
-			fds.push_back(((pollfd){clientSockfd, POLLIN, -1}));
-		}
-
-		for (size_t i = 1; i < fds.size(); ++i)
+		if (fds[0].fd == serverSocket && fds[0].revents & POLLIN)
 		{
+			std::cout << "HOLA" << std::endl;
+			int clientSocketfd = accept(serverSocket, NULL, NULL);
+			fds.push_back(((pollfd){clientSocketfd, POLLIN, 0}));
+		}
+		for	(size_t i = 1; i < fds.size(); i++)
+		{
+			char buffer[1024];
+			std::cout << "ITER: " << i << std::endl;
 			if (fds[i].revents & POLLIN)
 			{
-				char buffer[1024];
-				ssize_t bytesRead = recv(fds[i].fd, buffer, sizeof(buffer), 0);
-				if (bytesRead <= 0) {
-					if (bytesRead == 0)
+				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
+				std::cout << "==========================================================\n"; 
+				std::cout << buffer << std::endl;
+				std::cout << "==========================================================\n"; 
+				if (readBytes <= 0)
+				{
+					if (readBytes == 0)
 						std::cout << "Cliente desconectado\n";
 					else
 						std::cerr << "Error al recibir datos del cliente\n";
 					close(fds[i].fd);
 					fds.erase(fds.begin() + i);
 					--i; // Ajustar el índice ya que se eliminó un elemento
-					continue;
 				}
-				std::vector<std::string> lines = split(buffer, '\n');
-				std::string filename;
-				
-				for (size_t i = 0; i < lines.size(); i++)
+				else
 				{
-					filename = checkLine(split(lines[i], ' '));
-					if (!filename.empty())
-					{
-						break;
-					}
-				}
-				std::map<std::string ,Location>::iterator it = _locations.find(filename);
-
-				if (it != _locations.end())
-				{
-					filename = "/" + it->second.getIndex()[0];
 					std::ifstream file;
-					filename = "./html" + filename;
-					file.open(filename);
-					if (!file.is_open()) {
-						std::cerr << "Error al abrir el archivo HTML" << std::endl;
-						break;
-					}
+					file.open("./html/index.html");
 
 					std::string html;
 
@@ -165,11 +143,10 @@ void Server::startServ( void )
 						std::cerr << "Error al enviar HTML al cliente" << std::endl;
 						break;
 					}
+					std::cout << "HOLA 2 ELECTRIC BUGALU" << std::endl;
 				}
-				buffer[bytesRead] = '\0';
-				std::cout << "Mensaje recibido del cliente: " << buffer << std::endl;
 			}
-        }
+		}
     }
 }
 
