@@ -37,3 +37,4 @@ std::vector<std::string> split_r(const std::string& s, char delimiter);
 bool	isInt(const std::string & value);
 bool	isUsAscii(int c);
 bool	isOWS(int c);
+std::string	stringToLower(std::string str);

@@ -38,7 +38,6 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 {
 	for (std::vector<std::string>::iterator it = headerVec.begin(); it != headerVec.end(); it++)
 	{
-		//std::cerr << "hola" << std::endl;
 		std::vector<std::string>	headerLine = split_r(*it, COLON);
 
 		if (headerLine.size() != 2)
@@ -48,10 +47,41 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 
 		if (!Request::isValidFieldName(fieldName) || !Request::isValidFieldValue(fieldValue))
 			return (this->_errorCode = BAD_REQUEST, false);
-		this->_headerField.insert(std::pair<std::string, std::string>(headerLine.front(), headerLine.back()));
+		this->_headerField.insert(std::pair<std::string, std::string>(stringToLower(fieldName), fieldValue));
 	}
 	return (true);
 }
+
+/*
+	Check if content-length and transfer-encoding headers exists,
+	reads the body message according to that, if there is no message
+	_bodyMssg is left empty()
+*/
+bool	Request::readBodyMessage(std::vector<std::string> & bodyVec)
+{
+	int			contentLength = -1;
+	std::string	transferEncoding;
+
+	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
+	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
+
+	if (itLength != this->_headerField.end())
+	{
+		// Normal read of body message
+	}
+	else if (itEncoding != this->_headerField.end())
+	{
+		// Encoding reading
+	}
+	else
+	{
+		// Check if body is empty, if it's not set error
+	}
+	
+	(void)bodyVec;
+	return true;
+}
+
 
 
 /*
@@ -185,12 +215,15 @@ Request::Request(const char * req)
 	if (!this->parseRequestLine(*reqLineIt))
 		return ;
 
+	// Parse header fields 
 	std::vector<std::string> headerFields(headerItBegin, headerItEnd);
-	
 	if (!this->parseHeaderFields(headerFields))
 		return ;
 	
+	// Read message and check content-length / transfer-encoding
 	std::vector<std::string> bodyMssg(bodyIt, reqSplit.end());
+	if (!this->readBodyMessage(bodyMssg))
+		return ;
 
 
 	// Check if its better to throw execeptiooooons insetad of if'sssss
@@ -250,3 +283,4 @@ std::ostream	&operator<<(std::ostream &out, const Request &req)
 	}
 	return (out);
 }
+

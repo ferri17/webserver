@@ -43,3 +43,16 @@ bool	isOWS(int c)
 	return (c == HTAB || c == SP);
 }
 
+std::string	stringToLower(std::string str)
+{
+	if (str.empty())
+		return (str);
+	for (size_t i = 0; i < str.length(); i++)
+	{
+		if (std::isupper(str.at(i)))
+			str[i] = std::tolower(str.at(i));
+	}
+	return (str);
+}
+
+

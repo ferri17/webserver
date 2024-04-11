@@ -24,13 +24,14 @@ class	Request
 		void				skipLeadingGarbage(std::string & req);
 		bool				parseRequestLine(std::string & requestLineStr);
 		bool				parseHeaderFields(std::vector<std::string> & headerVec);
+		bool				readBodyMessage(std::vector<std::string> & bodyVec);
 	public:
 
 		//temporary public to find errors
-		requestLine							_requestLine;
+		requestLine													_requestLine;
 		std::map<std::string, std::string>	_headerField;
-		std::string							_bodyMssg;
-		short int							_errorCode;
+		std::string													_bodyMssg;
+		short int													_errorCode;
 		//
 
 
@@ -40,4 +41,4 @@ class	Request
 		//~Request(void);
 };
 
-std::ostream	&operator<<(std::ostream &out, const Request &req);
+std::ostream &	operator<<(std::ostream &out, const Request &req);
