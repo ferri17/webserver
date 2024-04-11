@@ -6,6 +6,7 @@
 #include <map>
 #include <iostream>
 #include <ctype.h>
+#include <string>
 
 typedef struct	requestLine
 {
@@ -17,11 +18,12 @@ typedef struct	requestLine
 class	Request
 {
 	private:
-		static bool	isValidFieldName(std::string & str);
-		static bool	isValidFieldValue(std::string & str);
-		void		skipLeadingGarbage(std::string & req);
-		bool		parseRequestLine(std::string & requestLineStr);
-		bool		parseHeaderFields(std::vector<std::string> & headerVec);
+		static bool			isValidFieldName(std::string & str);
+		static bool			isValidFieldValue(std::string & str);
+		static std::string	cleanOWS(std::string str);
+		void				skipLeadingGarbage(std::string & req);
+		bool				parseRequestLine(std::string & requestLineStr);
+		bool				parseHeaderFields(std::vector<std::string> & headerVec);
 	public:
 
 		//temporary public to find errors

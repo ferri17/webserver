@@ -38,12 +38,13 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 {
 	for (std::vector<std::string>::iterator it = headerVec.begin(); it != headerVec.end(); it++)
 	{
+		//std::cerr << "hola" << std::endl;
 		std::vector<std::string>	headerLine = split_r(*it, COLON);
 
 		if (headerLine.size() != 2)
 			return (this->_errorCode = BAD_REQUEST, false);
 		std::string	fieldName = headerLine.front();
-		std::string	fieldValue = headerLine.back();
+		std::string	fieldValue = Request::cleanOWS(headerLine.back());
 
 		if (!Request::isValidFieldName(fieldName) || !Request::isValidFieldValue(fieldValue))
 			return (this->_errorCode = BAD_REQUEST, false);
@@ -162,7 +163,7 @@ Request::Request(const char * req)
 	std::vector<std::string>::iterator	bodyIt;
 	
 	std::vector<std::string>::iterator	it = headerItBegin;
-	while (it != reqSplit.end() && (*it) != "\n")
+	while (it != reqSplit.end() && (*it) != "")
 		it++;
 	if (it == reqSplit.end())
 	{
@@ -174,7 +175,12 @@ Request::Request(const char * req)
 		headerItEnd = it;
 		bodyIt = it + 1;
 	}
-		
+	if (headerItBegin == headerItEnd)
+	{
+		this->_errorCode = BAD_REQUEST;
+		return ;
+	}
+
 	// Check request-line syntax and save information in class
 	if (!this->parseRequestLine(*reqLineIt))
 		return ;
@@ -183,6 +189,9 @@ Request::Request(const char * req)
 	
 	if (!this->parseHeaderFields(headerFields))
 		return ;
+	
+	std::vector<std::string> bodyMssg(bodyIt, reqSplit.end());
+
 
 	// Check if its better to throw execeptiooooons insetad of if'sssss
 }
@@ -199,9 +208,33 @@ bool	Request::isValidFieldName(std::string & str)
 
 bool	Request::isValidFieldValue(std::string & str)
 {
-	(void)str;
+	for (size_t i = 0; i < str.length(); i++)
+	{
+		if (!std::isprint(str.at(i)))
+			return (false);
+	}
 	return (true);
 }
+
+// Cleans leading and trailing OWS (space character(32) and horizontal tab(9))
+std::string	Request::cleanOWS(std::string str)
+{
+	std::string	cleanStr;
+
+	if (str.empty())
+		return (str);
+
+	size_t	begin = str.find_first_not_of(" \t");
+	if (begin == std::string::npos)
+		cleanStr = "";
+	else
+	{
+		size_t	end = str.find_last_not_of(" \t");
+		cleanStr = str.substr(begin, end - begin + 1);
+	}
+	return (cleanStr);
+}
+
 
 
 std::ostream	&operator<<(std::ostream &out, const Request &req)
