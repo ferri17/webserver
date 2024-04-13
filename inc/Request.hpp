@@ -32,6 +32,7 @@ class	Request
 		std::map<std::string, std::string>	_headerField;
 		std::string													_bodyMssg;
 		short int													_errorCode;
+		std::string													_errorMssg;
 		//
 
 

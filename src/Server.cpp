@@ -43,6 +43,7 @@ std::string checkLine(std::vector<std::string> line)
 	{
 		return (line[1]);
 	}
+	//ADSPEW^·"?·"$·^SDWE="$·="$·%·$%$·$·TGGRE$·FFGDGFDDFGGDFGFD
 	return (NULL);
 }
 

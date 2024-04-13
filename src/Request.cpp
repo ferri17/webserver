@@ -59,15 +59,27 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 */
 bool	Request::readBodyMessage(std::vector<std::string> & bodyVec)
 {
-	int			contentLength = -1;
+	size_t			contentLength = -1;
 	std::string	transferEncoding;
 
 	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
 	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
 
+	// Normal read of body message
 	if (itLength != this->_headerField.end())
 	{
-		// Normal read of body message
+		if (isInt((*itLength).second))
+			contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
+		else
+			return (this->_errorCode = BAD_REQUEST, false);
+		for (std::vector<std::string>::iterator it = bodyVec.begin(); it != bodyVec.end(); it++)
+		{
+			this->_bodyMssg += (*it);
+			if (it + 1 != bodyVec.end())
+				this->_bodyMssg += "\n";
+		}
+		if (this->_bodyMssg.length() != contentLength)
+			return (this->_errorCode = BAD_REQUEST, this->_errorMssg = "Invalid content length.", false);
 	}
 	else if (itEncoding != this->_headerField.end())
 	{
@@ -77,9 +89,7 @@ bool	Request::readBodyMessage(std::vector<std::string> & bodyVec)
 	{
 		// Check if body is empty, if it's not set error
 	}
-	
-	(void)bodyVec;
-	return true;
+	return (true);
 }
 
 
@@ -178,12 +188,15 @@ Request::Request(const char * req)
 	}
 	// Split message in vectors using LF as delimitor
 	std::vector<std::string>	reqSplit = split_r(request, LF);
-	// If last char of each vector is CR we erase it from the chain
+	// If last char of each vector is CR we erase it from the chain.
+	// We don't remove it from the body message.
 	for (std::vector<std::string>::iterator it = reqSplit.begin(); it != reqSplit.end(); it++)
 	{
 		std::string &	line = (*it);
 		if (!line.empty() && line.at(line.length() - 1) == CR)
 			line.erase(line.length() - 1);
+		if (line.empty())
+			break ;
 	}
 	// Set iterators to split request into request-line, headers and body message
 	// This allows us to generate vectors only containing the info we need on each step
@@ -281,6 +294,7 @@ std::ostream	&operator<<(std::ostream &out, const Request &req)
 	{
 		out << "\t" << (*it).first << ":" << (*it).second << std::endl;
 	}
+	out << "Body: " << req._bodyMssg << std::endl;
 	return (out);
 }
 

@@ -41,7 +41,10 @@ int main(int ac, char **av)
 		if (!requestMssg._errorCode)
 			std::cout << GREEN << requestMssg << NC<< std::endl;
 		else
+		{
 			std::cout << RED << "Error code: " << NC << requestMssg._errorCode << std::endl;
+			std::cout << RED << "Error message: " << NC << requestMssg._errorMssg << std::endl;
+		}
 
 
 		std::cout << "==================================" << std::endl;
