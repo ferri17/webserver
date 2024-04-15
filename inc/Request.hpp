@@ -24,7 +24,7 @@ class	Request
 		void				skipLeadingGarbage(std::string & req);
 		bool				parseRequestLine(std::string & requestLineStr);
 		bool				parseHeaderFields(std::vector<std::string> & headerVec);
-		bool				readBodyMessage(std::vector<std::string> & bodyVec);
+		bool				readBodyMessage(std::string & body);
 	public:
 
 		//temporary public to find errors
