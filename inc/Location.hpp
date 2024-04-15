@@ -13,7 +13,7 @@ typedef struct cgi_type
 class Location
 {
 	private:
-			bool _autoindex;
+			int _autoindex;
 			std::map<int, std::string> _error_page;
 			std::vector<std::string> _allow_methods;
 			std::string _upload_store;
@@ -25,13 +25,13 @@ class Location
 		Location( void );
 		~Location( void );
 
-		void setAutoindex(bool autoindex);
+		void setAutoindex(int autoindex);
 		void setErrorPage(const std::map<int, std::string> &error_page);
 		void setCgi(t_cgi_type cgi);
 		void setUploadStore(const std::string &upload_store);
 		void setReturnPag(const std::string &returnPag);
 		void setIndex(const std::vector<std::string> &index);
-		bool getAutoindex() const;
+		int getAutoindex() const;
 		std::map<int, std::string> getErrorPage() const;
 		std::vector<std::string > getAllowMethods() const;
 		std::string getUploadStore() const;

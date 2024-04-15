@@ -21,7 +21,7 @@ void Server::initDef(void)
 /// GET & SET
 int Server::getListen() const { return _listen; }
 std::vector<std::string> Server::getServerName() const { return _server_name; }
-int Server::getClientMaxBodySize() const { return _client_max_body_size; }
+long Server::getClientMaxBodySize() const { return _client_max_body_size; }
 std::string Server::getRoot() const { return _root; }
 std::string Server::getUploadStore() const { return _upload_store; }
 std::map<int, std::string> Server::getErrorPage() const { return _error_page; }
@@ -38,7 +38,7 @@ std::map<std::string, Location> &Server::getLocations()
 void Server::setLocations(const std::map<std::string, Location> &locations) { _locations = locations; }
 void Server::setListen(int listen_) { _listen = listen_; }
 void Server::setServerName(const std::vector<std::string> &serverName) { _server_name = serverName; }
-void Server::setClientMaxBodySize(int clientMaxBodySize) { _client_max_body_size = clientMaxBodySize; }
+void Server::setClientMaxBodySize(long clientMaxBodySize) { _client_max_body_size = clientMaxBodySize; }
 void Server::setRoot(const std::string &root) { _root = root; }
 void Server::setUploadStore(const std::string &uploadStore) { _upload_store = uploadStore; }
 void Server::setErrorPage(const std::map<int, std::string> &errorPage) { _error_page = errorPage; }

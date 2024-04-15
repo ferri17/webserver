@@ -10,6 +10,7 @@ Input::Input( char *fileToOpen )
 	fileOpen = fileToOpen;
 	reopenFile();
 	correct = 0;
+	
 }
 
 void Input::reopenFile ( void )
@@ -22,9 +23,8 @@ void Input::reopenFile ( void )
 
 void Input::eraseAllTabs(std::string& str, const std::string& token) {
     size_t pos = 0;
-    while ((pos = str.find(token, pos)) != std::string::npos) {
+    while ((pos = str.find(token, pos)) != std::string::npos)
         str[pos] = ' ';
-    }
 }
 
 void Input::throwExeptionFormat(std::string str, int i)
@@ -94,13 +94,8 @@ int Input::checkValidSize(std::string str)
 		str.erase(str.size() - 1);
 	}
 	if (isInt(str))
-	{
-		long num = atoi(str.c_str());
-		for (int i = 0; i < type; i++)
-			num *= 1024;
-		return(1);
-	}
-	return(0);
+		return(type);
+	return(KO);
 }
 
 int Input::checkValidDir(std::string str)
@@ -137,7 +132,8 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 		return (checkLocation(lineSplit, flag, s));
 	if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
 	{
-		s.setListen(std::atoi(lineSplit[1].c_str()));
+		if (s.getListen() == -1)
+			s.setListen(std::atoi(lineSplit[1].c_str()));
 		return (VALID_ARG);
 	}
 	if (lineSplit.size() >= 2 && lineSplit[0] == "server_name" && checkValidNames(lineSplit))
@@ -146,14 +142,27 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 			s.pushServerName(lineSplit[j]);
 		return	(VALID_ARG);
 	}
-	if (lineSplit.size() == 2 && lineSplit[0] == "client_max_body_size" && checkValidSize(lineSplit[1]))
+	if (lineSplit.size() == 2 && lineSplit[0] == "client_max_body_size")
 	{
-		s.setClientMaxBodySize(std::atoi(lineSplit[1].c_str()));
-		return	(VALID_ARG);
+		int type = checkValidSize(lineSplit[1]);
+
+		if (type != KO)
+		{
+			if (s.getClientMaxBodySize() == -1)
+			{
+				long num = atoi(lineSplit[1].c_str());
+				std::cout << num << std::endl;
+				for (int i = 0; i < type; i++)
+					num *= 1024;
+				s.setClientMaxBodySize(num);
+				return	(VALID_ARG);
+			}
+		}
 	}
 	if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDirSemiColon(lineSplit[1]))
 	{
-		s.setRoot(lineSplit[2]);
+		if (s.getRoot().empty())
+			s.setRoot(lineSplit[2]);
 		return (VALID_ARG);
 	}
 	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDirSemiColon(lineSplit[2]))
@@ -163,7 +172,8 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 	}
 	if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDirSemiColon(lineSplit[1]))
 	{
-		s.setUploadStore(lineSplit[1]);
+		if (s.getUploadStore().empty())
+			s.setUploadStore(lineSplit[1]);
 		return (VALID_ARG);
 	}
 	if (lineSplit.size() == 1 && lineSplit[0] == "}" && flag == VALID_ARG)
@@ -226,7 +236,8 @@ int Input::checkLocationVar(std::vector<std::string> lineSplit, Location &loc)
 		return (VALID_ARG_LOC);
 	if (lineSplit.size() == 2 && lineSplit[0] == "autoindex" && checkValidAutoIndex(lineSplit[1]))
 	{
-		loc.setAutoindex(lineSplit[1] == "on;");
+		if (loc.getAutoindex() == -1)
+			loc.setAutoindex(lineSplit[1] == "on;");
  		return (VALID_ARG_LOC);
 	}
 	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDirSemiColon(lineSplit[2]))
@@ -236,12 +247,14 @@ int Input::checkLocationVar(std::vector<std::string> lineSplit, Location &loc)
 	}
 	if (lineSplit.size() == 2 && lineSplit[0] == "upload_store" && checkValidDirSemiColon(lineSplit[1]))
 	{
-		loc.setUploadStore(lineSplit[1]);
+		if (loc.getUploadStore().empty())
+			loc.setUploadStore(lineSplit[1]);
 		return (VALID_ARG_LOC);
 	}
 	if (lineSplit.size() == 2 && lineSplit[0] == "return" && checkValidPag(lineSplit[1]))
 	{
-		loc.setReturnPag(lineSplit[1]);
+		if (loc.getReturnPag().empty())
+			loc.setReturnPag(lineSplit[1]);
 		return (VALID_ARG_LOC);
 	}
 	if (lineSplit.size() == 3 && lineSplit[0] == "cgi" && checkValidCgi(lineSplit[1]) && checkValidDirSemiColon(lineSplit[2]))

@@ -4,16 +4,17 @@
 
 Location::Location( void )
 {
+	_autoindex = -1;
 	close = false;
 }
 
-void Location::setAutoindex(bool autoindex) { _autoindex = autoindex; }
+void Location::setAutoindex(int autoindex) { _autoindex = autoindex; }
 void Location::setErrorPage(const std::map<int, std::string> &error_page) { _error_page = error_page; }
 void Location::setCgi(const t_cgi_type cgi) { _cgi.push_back(cgi); }
 void Location::setUploadStore(const std::string &upload_store) { _upload_store = upload_store; }
 void Location::setReturnPag(const std::string &returnPag) { _returnPag = returnPag; }
 void Location::setIndex(const std::vector<std::string> &index) { _index = index; }
-bool Location::getAutoindex() const { return _autoindex; }
+int Location::getAutoindex() const { return _autoindex; }
 void Location::setClose(bool close_) { close = close_; }
 bool Location::getClose() const { return close; }
 std::map<int, std::string> Location::getErrorPage() const { return _error_page; }
