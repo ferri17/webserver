@@ -38,24 +38,74 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 {
 	for (std::vector<std::string>::iterator it = headerVec.begin(); it != headerVec.end(); it++)
 	{
-		std::vector<std::string>	headerLine = split_r(*it, COLON);
-
-		if (headerLine.size() != 2)
+		std::string	headerLine = *it;
+		size_t	separator = headerLine.find(COLON);
+		std::string	fieldName;
+		std::string	fieldValue;
+		if (separator == std::string::npos)
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = "Bad Request: Syntax error on header fields.";
+			this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
 			return (false);
 		}
-		std::string	fieldName = headerLine.front();
-		std::string	fieldValue = Request::cleanOWS(headerLine.back());
-
+		else
+		{
+			fieldName = headerLine.substr(0, separator);
+			fieldValue = headerLine.substr(separator + 1, std::string::npos);
+			fieldValue = Request::cleanOWS(fieldValue);
+		}
 		if (!Request::isValidFieldName(fieldName) || !Request::isValidFieldValue(fieldValue))
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = "Bad Request: Syntax error on header fields.";
+			this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
 			return (false);
 		}
 		this->_headerField.insert(std::pair<std::string, std::string>(stringToLower(fieldName), fieldValue));
+	}
+	return (true);
+}
+
+/*
+	Check the validity of the header fields found in the request.
+	Headers implemented: content-length, transfer-encoding(chunked) and host.
+*/
+bool	Request::checkHeaderFields(void)
+{
+	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
+	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
+	std::map<std::string, std::string>::iterator	itHost = this->_headerField.find("host");
+
+	// Check host header field
+	if (itHost == this->_headerField.end())
+	{
+		this->_errorCode = BAD_REQUEST;
+		this->_errorMssg = HOST_NOT_FOUND_STR;
+		return (false);
+	}
+	// Check content-length and transfer-encoding header field
+	if (itLength != this->_headerField.end() && itEncoding != this->_headerField.end())
+	{
+		this->_errorCode = BAD_REQUEST;
+		this->_errorMssg = CONTRADICTORY_HEADERS_STR;
+		return (false);
+	}
+	else if (itLength != this->_headerField.end())
+	{
+		if (!isInt((*itLength).second))
+		{
+			this->_errorCode = BAD_REQUEST;
+			this->_errorMssg = INVALID_CONTENT_LENGTH_STR;
+			return (false);
+		}
+	}
+	else if (itEncoding != this->_headerField.end())
+	{
+		if (stringToLower((*itEncoding).second) != "chunked")
+		{
+			this->_errorCode = NOT_IMPLEMENTED;
+			this->_errorMssg = ENCODING_NOT_IMPLEMENTED_STR;
+			return (false);
+		}
 	}
 	return (true);
 }
@@ -73,35 +123,47 @@ bool	Request::readBodyMessage(std::string & body)
 	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
 	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
 
-	// Normal read of body message
 	if (itLength != this->_headerField.end())
 	{
-		if (isInt((*itLength).second))
-		{
-			contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
+		// Read body message using content-length
+		contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
+		if (body.length() == contentLength)
 			this->_bodyMssg = body;
-			if (body.length() != contentLength)
-			{
-				this->_errorCode = BAD_REQUEST;
-				this->_errorMssg = "Bad Request: Content-length doesn't match real body length.";
-				return (false);
-			}
-		}
 		else
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = "Bad Request: Invalid content-length.";
+			this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
 			return (false);
 		}
 	}
 	else if (itEncoding != this->_headerField.end())
 	{
-		// Encoding reading
-		// if encoding is not understood by server it should return 501 (not implemented)
+		// Read body message using transfer-encoding(chunked)
+		size_t	endSignal = body.find("0\r\n");
+		if (body.find("0\r\n") != std::string::npos)
+		{
+			std::vector<std::string>	bodyVec = split_r(body, LF);
+
+			for (std::vector<std::string>::iterator it = bodyVec.begin(); *it != "0\r"; it++)
+			{
+				
+			}
+		}
+		else
+		{
+			this->_errorCode = BAD_REQUEST;
+			this->_errorMssg = INVALID_CHUNK_STR;
+			return (false);	
+		}
 	}
 	else
 	{
-		// Check if body is empty, if it's not set error
+		if (!body.empty())
+		{
+			this->_errorCode = BAD_REQUEST;
+			this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
+			return (false);
+		}
 	}
 	return (true);
 }
@@ -123,7 +185,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	if (requestLineStr.empty() || requestLineStr.at(requestLineStr.length() - 1) == SP)
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = "Bad Request: Syntax error on request-line.";
+		this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
 		return (false);
 	}
 
@@ -131,7 +193,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	if (requestLineStr.length() > MAX_LEN_REQUEST_LINE)
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = "Bad Request: Request-line too long. Max lenght: 160000.";
+		this->_errorMssg = REQLINE_LONG_STR;
 		return (false);
 	}
 
@@ -142,7 +204,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	if (requestLineVec.size() != 3)
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = "Bad Request: Syntax error on request-line.";
+		this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
 		return (false);
 	}
 	std::string	method = requestLineVec[0];
@@ -160,12 +222,12 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 		if (i == method.length())
 		{
 			this->_errorCode = NOT_IMPLEMENTED;
-			this->_errorMssg = "Not implemented: Method not implemented.";
+			this->_errorMssg = METHOD_NOT_IMPLEMENTED_STR;
 		}
 		else
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = "Bad Request: Syntax error on method token.";
+			this->_errorMssg = SYNTAX_ERROR_METHOD_STR;
 		}
 		return (false);
 	}
@@ -179,7 +241,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 		if (i != reqTarget.length())
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = "Bad Request: Syntax error on request-target.";
+			this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
 			return (false);
 		}
 		this->_requestLine._requestTarget = reqTarget;
@@ -187,7 +249,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	else
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = "Bad Request: Syntax error on request-target.";
+		this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
 		return (false);
 	}
 
@@ -197,7 +259,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	else
 	{
 		this->_errorCode = HTTP_VERSION_NOT_SUPPORTED;
-		this->_errorMssg = "Http Version Not Suppored: Invalid http protocol version.";
+		this->_errorMssg = HTTP_VERSION_NOT_SUPPORTED_STR;
 		return (false);
 	}
 	return (true);
@@ -228,7 +290,7 @@ Request::Request(const char * req)
 	if (request.empty())
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = "Bad Request: Request is empty.";
+		this->_errorMssg = EMPTY_REQUEST_STR;
 		return ;
 	}
 	// Split body message from request-line and headers
@@ -261,24 +323,24 @@ Request::Request(const char * req)
 	// This allows us to generate vectors only containing the info we need on each step
 	std::vector<std::string>::iterator	reqLineIt = reqSplit.begin();
 	std::vector<std::string>::iterator	headerItBegin = reqSplit.begin() + 1;
-	std::vector<std::string>::iterator	headerItEnd = reqSplit.end();
 	
-	if (headerItBegin == headerItEnd)
+	if (headerItBegin == reqSplit.end())
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = "Bad Request: Syntax error on header fields.";
+		this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
 		return ;
 	}
 
 	// Check request-line syntax and save information in class
 	if (!this->parseRequestLine(*reqLineIt))
 		return ;
-
 	// Parse header fields 
-	std::vector<std::string> headerFields(headerItBegin, headerItEnd);
+	std::vector<std::string> headerFields(headerItBegin, reqSplit.end());
 	if (!this->parseHeaderFields(headerFields))
 		return ;
-	
+	// Check header fields validity
+	if (!this->checkHeaderFields())
+		return ;
 	// Read message and check content-length / transfer-encoding
 	if (!this->readBodyMessage(body))
 		return ;
@@ -337,7 +399,7 @@ std::ostream	&operator<<(std::ostream &out, const Request &req)
 	out << "Header fields: " << std::endl;
 	for (std::map<std::string, std::string>::const_iterator it = req._headerField.begin(); it != req._headerField.end(); it++)
 	{
-		out << "\t" << (*it).first << ":" << (*it).second << std::endl;
+		out << "\t" << (*it).first << ": " << (*it).second << std::endl;
 	}
 	out << "Body: " << req._bodyMssg;
 	return (out);

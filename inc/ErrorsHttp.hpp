@@ -40,3 +40,34 @@
 //#define	SERVICE_UNAVAILABLE 503
 //#define	GATEWAY_TIMEOUT 504
 #define	HTTP_VERSION_NOT_SUPPORTED 505
+
+// 400 BAD REQUEST error messages
+#define BAD_REQUEST_STR "Bad request: "
+#define EMPTY_REQUEST_STR BAD_REQUEST_STR "Empty request."
+#define SYNTAX_ERROR_HEADER_STR BAD_REQUEST_STR "Syntax error on header fields."
+#define INVALID_CONTENT_LENGTH_STR BAD_REQUEST_STR "Invalid content-length."
+#define WRONG_CONTENT_LENGTH_STR BAD_REQUEST_STR "Content-length doesn't match real body length."
+#define SYNTAX_ERROR_REQLINE_STR BAD_REQUEST_STR "Syntax error on request-line."
+#define REQLINE_LONG_STR BAD_REQUEST_STR "Request-line too long. Max lenght: 160000."
+#define SYNTAX_ERROR_REQTARGET_STR BAD_REQUEST_STR "Syntax error on request-target."
+#define SYNTAX_ERROR_METHOD_STR BAD_REQUEST_STR "Syntax error on method token."
+#define HOST_NOT_FOUND_STR BAD_REQUEST_STR "Host header not found."
+#define CONTRADICTORY_HEADERS_STR BAD_REQUEST_STR "Content-length and transfer-encoding header found."
+#define INVALID_CHUNK_STR BAD_REQUEST_STR "Invalid chunked message."
+
+// 501 NOT IMPLEMENTED error messages
+#define METHOD_NOT_IMPLEMENTED_STR "Not implemented: Method not implemented."
+#define ENCODING_NOT_IMPLEMENTED_STR "Not implemented: Encoding directive not implemented."
+
+// 505 HTTP VERSION NOT SUPPORTED errors messages
+#define HTTP_VERSION_NOT_SUPPORTED_STR "Http version not supported: Invalid http protocol version."
+
+
+
+
+
+
+
+
+
+

@@ -23,6 +23,7 @@ class	Request
 		static std::string	cleanOWS(std::string str);
 		void				skipLeadingGarbage(std::string & req);
 		bool				parseRequestLine(std::string & requestLineStr);
+		bool				checkHeaderFields(void);
 		bool				parseHeaderFields(std::vector<std::string> & headerVec);
 		bool				readBodyMessage(std::string & body);
 	public:
