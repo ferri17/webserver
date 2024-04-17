@@ -113,9 +113,6 @@ void Server::startServ( void )
 			if (fds[i].revents & POLLIN)
 			{
 				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
-				std::cout << "==========================================================\n"; 
-				std::cout << buffer << std::endl;
-				std::cout << "==========================================================\n"; 
 				if (readBytes <= 0)
 				{
 					if (readBytes == 0)
@@ -128,7 +125,14 @@ void Server::startServ( void )
 				}
 				else
 				{
+					buffer[readBytes] = '\0';
+					std::cout << "==========================================================\n"; 
+					std::cout << buffer << std::endl;
+					std::cout << "==========================================================\n"; 
 					std::ifstream file;
+					std::vector<std::string> test = split(buffer, '\n');
+					std::string pag = checkLine(split(test[0], ' '));
+
 					file.open("./html/index.html");
 
 					std::string html;
@@ -143,7 +147,6 @@ void Server::startServ( void )
 						std::cerr << "Error al enviar HTML al cliente" << std::endl;
 						break;
 					}
-					std::cout << "HOLA 2 ELECTRIC BUGALU" << std::endl;
 				}
 			}
 		}
