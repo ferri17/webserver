@@ -29,12 +29,16 @@ class	Request
 	public:
 
 		//temporary public to find errors
-		requestLine													_requestLine;
+		requestLine							_requestLine;
 		std::map<std::string, std::string>	_headerField;
-		std::string													_bodyMssg;
-		short int													_errorCode;
-		std::string													_errorMssg;
+		std::string							_bodyMssg;
+		short int							_errorCode;
+		std::string							_errorMssg;
 		//
+
+		requestLine							getRequestLine(void);
+		std::map<std::string, std::string>	getHeaderField(void);
+		std::string							getBodyMssg(void);
 
 
 		Request(const char * req);

@@ -1,7 +1,12 @@
 #pragma once
 
-#include <unordered_map>
+#include "Server.hpp"
+#include "Utils.hpp"
+#include "ErrorsHttp.hpp"
+#include <map>
 #include <iostream>
+#include <ctype.h>
+#include <string>
 
 typedef struct	statusLine
 {
@@ -13,9 +18,14 @@ typedef struct	statusLine
 class	Response
 {
 	private:
-		statusLine										_statusInfo;
-		std::unordered_map<std::string, std::string>	_headerField;
-		std::string										_bodyMssg;
+		statusLine							_statusLine;
+		std::map<std::string, std::string>	_headerField;
+		std::string							_bodyMssg;
 	public:
-		std::string	createResponse(void);
+		Response(void);
+		//Response(const Response & other);
+		//Response &	operator=(const Response & other);
+		//~Response(void);
 };
+
+std::ostream &	operator<<(std::ostream &out, const Response &req);
