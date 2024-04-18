@@ -1,6 +1,14 @@
 
 #include "Utils.hpp"
 
+std::string toString(int num)
+{
+	std::stringstream	ss;
+
+	ss << num;
+	return(ss.str());
+}
+
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
 	std::vector<std::string> tokens;

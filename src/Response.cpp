@@ -10,15 +10,9 @@ std::string	Response::generateResponse(void)
 {
 	std::string	responseStr;
 
-	std::string			code;
-	std::stringstream	ss;
-
-
 	responseStr += this->_statusLine._protocolVersion;
 	responseStr += " ";
-	ss << this->_statusLine._statusCode;
-	code = ss.str();
-	responseStr += code;
+	responseStr += toString(this->_statusLine._statusCode);
 	responseStr += " ";
 	responseStr += this->_statusLine._reasonPhrase;
 	responseStr += "\r\n";

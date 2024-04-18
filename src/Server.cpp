@@ -1,6 +1,8 @@
 
 #include "Server.hpp"
 #include <poll.h>
+#include "Request.hpp"
+#include "Response.hpp"
 
 Server::Server( void )
 {
@@ -103,7 +105,6 @@ void Server::startServ( void )
         }
 		if (fds[0].fd == serverSocket && fds[0].revents & POLLIN)
 		{
-			std::cout << "HOLA" << std::endl;
 			int clientSocketfd = accept(serverSocket, NULL, NULL);
 			fds.push_back(((pollfd){clientSocketfd, POLLIN, 0}));
 		}
@@ -129,24 +130,56 @@ void Server::startServ( void )
 					buffer[readBytes] = '\0';
 					std::cout << "==========================================================\n"; 
 					std::cout << buffer << std::endl;
-					std::cout << "==========================================================\n"; 
-					std::ifstream file;
-					std::vector<std::string> test = split(buffer, '\n');
-					std::string pag = checkLine(split(test[0], ' '));
+					std::cout << "==========================================================\n";
+					Request req(buffer);
+					if (req.getErrorCode() != 0)
+					{
+						std::cout <<  req.getErrorCode() << ": " << req.getErrorMessage() << std::endl;
+						exit(0);
+					}
+					Location loc = this->getLocations()[req.getRequestTarget()];
+					if (req.getRequestTarget() == "/")
+					{
+						std::ifstream file;
+						loc.getIndex();
+						file.open("./html/" + loc.getIndex()[0]);
 
-					file.open("./html/index.html");
+						std::string html;
 
-					std::string html;
+						std::getline(file, html, '\0');
 
-					std::getline(file, html, '\0');
+						file.close();
+						Response res;
 
-					file.close();
+						res.addHeaderField(std::pair<std::string, std::string>("Content-Type", "text/html"));
+						res.addHeaderField(std::pair<std::string, std::string>("Cache-Control", "max-age=0"));
+						res.addHeaderField(std::pair<std::string, std::string>("Content-Length", toString(html.size())));
+						res.setBody(html);
+						// Enviar HTML al cliente
+						std::string response  = res.generateResponse();
+						if (send(fds[i].fd, response.c_str(), strlen(response.c_str()), 0) == -1) {
+							std::cerr << "Error al enviar HTML al cliente" << std::endl;
+							break;
+						}
+					}
+					else if (req.getRequestTarget() == "/favicon.ico")
+					{
+						Response res;
 
-					std::string html_hola = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n" + html;
-					// Enviar HTML al cliente
-					if (send(fds[i].fd, html_hola.c_str(), strlen(html_hola.c_str()), 0) == -1) {
-						std::cerr << "Error al enviar HTML al cliente" << std::endl;
-						break;
+						std::ifstream faviconFile("./html/favicon.ico");
+
+						std::string faviconContent((std::istreambuf_iterator<char>(faviconFile)), std::istreambuf_iterator<char>());
+
+						res.addHeaderField(std::pair<std::string, std::string>("Content-Type", "image/x-icon"));
+						res.addHeaderField(std::pair<std::string, std::string>("Content-Length", toString(faviconContent.size())));
+						res.addHeaderField(std::make_pair("Cache-Control", "public, max-age=3600"));
+						res.setBody(faviconContent);
+						std::string response  = res.generateResponse();
+						if (send(fds[i].fd, response.c_str(), strlen(response.c_str()), 0) == -1) {
+							std::cerr << "Error al enviar HTML al cliente" << std::endl;
+							break;
+						}
+						faviconFile.close();
 					}
 				}
 			}

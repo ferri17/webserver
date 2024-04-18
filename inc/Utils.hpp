@@ -39,3 +39,4 @@ bool	isInt(const std::string & value);
 bool	isUsAscii(int c);
 bool	isOWS(int c);
 std::string	stringToLower(std::string str);
+std::string toString(int num);
