@@ -45,8 +45,6 @@ int main(int ac, char **av)
 			std::cout << RED << "Error code: " << NC << requestMssg.getErrorCode() << std::endl;
 			std::cout << RED << "Error message: " << NC << requestMssg.getErrorMessage() << std::endl;
 		}
-
-
 		std::cout << "==================================" << std::endl;
 		std::cout << "==================================" << std::endl;
 		std::cout << "==================================" << std::endl;
