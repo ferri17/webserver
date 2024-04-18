@@ -3,6 +3,7 @@
 #include "Input.hpp"
 #include "Server.hpp"
 #include "Request.hpp"
+#include "Response.hpp"
 #include "Colors.hpp"
 
 int main(int ac, char **av)
@@ -37,13 +38,12 @@ int main(int ac, char **av)
 
 		//Parse request in Request class
 		Request	requestMssg(buffer);
-
-		if (!requestMssg._errorCode)
+		if (!requestMssg.getErrorCode())
 			std::cout << GREEN << requestMssg << NC<< std::endl;
 		else
 		{
-			std::cout << RED << "Error code: " << NC << requestMssg._errorCode << std::endl;
-			std::cout << RED << "Error message: " << NC << requestMssg._errorMssg << std::endl;
+			std::cout << RED << "Error code: " << NC << requestMssg.getErrorCode() << std::endl;
+			std::cout << RED << "Error message: " << NC << requestMssg.getErrorMessage() << std::endl;
 		}
 
 
@@ -52,5 +52,19 @@ int main(int ac, char **av)
 		std::cout << "==================================" << std::endl;
 	}
 
+	Response	testResponse;
+
+	std::string	testBody("<h1>Adria dinar a les 14:00</h1>");
+	testResponse.setBody(testBody);
+	std::string	bodyLenght;
+	std::stringstream	ss;
+	ss << testBody.length();
+	bodyLenght = ss.str();
+	
+	testResponse.addHeaderField(std::pair<std::string, std::string>("content-length", bodyLenght));	
+	testResponse.addHeaderField(std::pair<std::string, std::string>("ads-lengtdash", "dassad"));	
+
+	std::cout << "Reponse test:" << std::endl;
+	std::cout << testResponse.generateResponse();
 	return (0);
 }

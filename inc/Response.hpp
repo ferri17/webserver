@@ -7,11 +7,13 @@
 #include <iostream>
 #include <ctype.h>
 #include <string>
+#include <sstream>
+#include <string>
 
 typedef struct	statusLine
 {
 	std::string	_protocolVersion;
-	short int	_statusCode;
+	int			_statusCode;
 	std::string	_reasonPhrase;
 }	statusLine;
 
@@ -23,6 +25,12 @@ class	Response
 		std::string							_bodyMssg;
 	public:
 		Response(void);
+		std::string	generateResponse(void);
+
+		void		setStatusLine(statusLine statusLine);
+		void		setHeaders(std::map<std::string, std::string> headers);
+		void		addHeaderField(std::pair<std::string, std::string> headerField);
+		void		setBody(std::string  body);
 		//Response(const Response & other);
 		//Response &	operator=(const Response & other);
 		//~Response(void);

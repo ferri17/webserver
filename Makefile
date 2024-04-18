@@ -11,7 +11,7 @@ NAME = webserv
 FLAGS = -std=c++98 -Wall -Wextra -Werror
 DEPFLAGS = -MMD -MP
 
-FILES_SRC = Input.cpp Utils.cpp Server.cpp Request.cpp
+FILES_SRC = Input.cpp Utils.cpp Server.cpp Request.cpp Response.cpp
 MAIN = main.cpp
 DIR_OBJ = .tmp/
 

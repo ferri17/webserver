@@ -140,6 +140,7 @@ bool	Request::readBodyMessage(std::string & body)
 	{
 		// Read body message using transfer-encoding(chunked)
 		size_t	endSignal = body.find("0\r\n");
+		(void)endSignal;
 		if (body.find("0\r\n") != std::string::npos)
 		{
 			std::vector<std::string>	bodyVec = split_r(body, LF);
@@ -388,20 +389,33 @@ std::string	Request::cleanOWS(std::string str)
 	return (cleanStr);
 }
 
+requestLine							Request::getRequestLine(void) const { return (this->_requestLine); }
+std::map<std::string, std::string>	Request::getHeaderField(void) const { return (this->_headerField); }
+std::string							Request::getBodyMssg(void) const { return (this->_bodyMssg); }
+std::string							Request::getMethod(void) const { return (this->_requestLine._method); }
+std::string							Request::getRequestTarget(void) const { return (this->_requestLine._requestTarget); }
+std::string							Request::getProtocolVersion(void) const { return (this->_requestLine._protocolVersion); }
+std::string							Request::getErrorMessage(void) const { return (this->_errorMssg); }
+int									Request::getErrorCode(void) const { return (this->_errorCode); }
+
 
 
 std::ostream	&operator<<(std::ostream &out, const Request &req)
 {
+	requestLine							reqLine  = req.getRequestLine();
+	std::map<std::string, std::string>	reqHeader = req.getHeaderField();
+	std::string							body = req.getBodyMssg();
+
 	out << "Request line: " <<std::endl;
-	out << "\tMethod: " << req._requestLine._method <<std::endl;
-	out << "\tRequest target: " << req._requestLine._requestTarget <<std::endl;
-	out << "\tVersion: " << req._requestLine._protocolVersion <<std::endl;
+	out << "\tMethod: " << reqLine._method <<std::endl;
+	out << "\tRequest target: " << reqLine._requestTarget <<std::endl;
+	out << "\tVersion: " << reqLine._protocolVersion <<std::endl;
 	out << "Header fields: " << std::endl;
-	for (std::map<std::string, std::string>::const_iterator it = req._headerField.begin(); it != req._headerField.end(); it++)
+	for (std::map<std::string, std::string>::const_iterator it = reqHeader.begin(); it != reqHeader.end(); it++)
 	{
 		out << "\t" << (*it).first << ": " << (*it).second << std::endl;
 	}
-	out << "Body: " << req._bodyMssg;
+	out << "Body: " << body;
 	return (out);
 }
 
