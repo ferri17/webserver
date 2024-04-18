@@ -1,3 +1,0 @@
-#!/bin/bash
-
-echo ME CAGO EN TODO 2 ELECTRIC BUGALU
