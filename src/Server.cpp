@@ -60,6 +60,7 @@ std::string checkLine(std::vector<std::string> line)
 	{
 		return (line[1]);
 	}
+	//ADSPEW^·"?·"$·^SDWE="$·="$·%·$%$·$·TGGRE$·FFGDGFDDFGGDFGFD
 	return (NULL);
 }
 
@@ -170,6 +171,17 @@ Server::~Server( void )
 {
 
 }
+
+bool	Server::isServerMethod(std::string & method)
+{
+	std::string	validMethods[4] = {"GET", "HEAD", "POST", "DELETE"};
+
+	for (size_t i = 0; i < 4; i++)
+		if (method == validMethods[i])
+			return (true);
+	return (false);
+}
+
 
 std::ostream	&operator<<(std::ostream &out, const Server &nb)
 {
