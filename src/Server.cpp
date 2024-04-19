@@ -3,6 +3,7 @@
 #include <poll.h>
 #include "Request.hpp"
 #include "Response.hpp"
+#include "Headers.hpp"
 
 Server::Server( void )
 {
@@ -15,7 +16,7 @@ void Server::initDef(void)
 	_listen = 4242;
 	_server_name.push_back("default.com");
 	_client_max_body_size = 1024;
-	_root = ".";
+	_root = "./html";
 	_upload_store = "/tmp";
 	_error_page.insert(std::pair<int, std::string>(4242, "./html/error.html"));
 }
@@ -99,7 +100,8 @@ void Server::startServ( void )
 	while (true)
 	{
         int ret = poll(fds.data(), fds.size(), -1); // Espera indefinidamente
-        if (ret == -1) {
+        if (ret == -1)
+		{
             std::cerr << "Error en poll()\n";
             break;
         }
@@ -137,49 +139,58 @@ void Server::startServ( void )
 						std::cout <<  req.getErrorCode() << ": " << req.getErrorMessage() << std::endl;
 						exit(0);
 					}
-					Location loc = this->getLocations()[req.getRequestTarget()];
-					if (req.getRequestTarget() == "/")
+					std::map<std::string, Location> loc = this->getLocations();
+
+					std::map<std::string, Location>::iterator itLoc = loc.find(req.getRequestTarget());
+					Response res;
+
+					if (itLoc == loc.end())
 					{
-						std::ifstream file;
-						loc.getIndex();
-						file.open("./html/" + loc.getIndex()[0]);
+						res.setStatusLine((statusLine){"HTTP/1.1", 404, "Page Not Found"});
+						std::ifstream file("./html/error_pages/404.html");
 
 						std::string html;
 
-						std::getline(file, html, '\0');
-
+						getline(file, html, '\0');
 						file.close();
-						Response res;
-
-						res.addHeaderField(std::pair<std::string, std::string>("Content-Type", "text/html"));
-						res.addHeaderField(std::pair<std::string, std::string>("Cache-Control", "max-age=0"));
-						res.addHeaderField(std::pair<std::string, std::string>("Content-Length", toString(html.size())));
+						res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
+						res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
 						res.setBody(html);
-						// Enviar HTML al cliente
-						std::string response  = res.generateResponse();
-						if (send(fds[i].fd, response.c_str(), strlen(response.c_str()), 0) == -1) {
-							std::cerr << "Error al enviar HTML al cliente" << std::endl;
-							break;
+					}
+					else
+					{
+						Location loc = itLoc->second;
+
+						std::vector<std::string> indexs = loc.getIndex();
+						std::string fileToOpen;
+						for (std::vector<std::string>::iterator it = indexs.begin(); it != indexs.end(); it++)
+						{
+							fileToOpen = _root + *it;
+							if (access(fileToOpen.c_str(), F_OK | R_OK))
+								break;
+						}
+						if (fileToOpen.empty())
+						{
+							res.setStatusLine((statusLine){"HTTP/1.1", 404, "Page Not Found"});
+						}
+						else
+						{
+							std::ifstream file(fileToOpen);
+
+							std::string html;
+
+							getline(file, html, '\0');
+							file.close();
+							res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
+							res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
+							res.setBody(html);
 						}
 					}
-					else if (req.getRequestTarget() == "/favicon.ico")
-					{
-						Response res;
-
-						std::ifstream faviconFile("./html/favicon.ico");
-
-						std::string faviconContent((std::istreambuf_iterator<char>(faviconFile)), std::istreambuf_iterator<char>());
-
-						res.addHeaderField(std::pair<std::string, std::string>("Content-Type", "image/x-icon"));
-						res.addHeaderField(std::pair<std::string, std::string>("Content-Length", toString(faviconContent.size())));
-						res.addHeaderField(std::make_pair("Cache-Control", "public, max-age=3600"));
-						res.setBody(faviconContent);
-						std::string response  = res.generateResponse();
-						if (send(fds[i].fd, response.c_str(), strlen(response.c_str()), 0) == -1) {
-							std::cerr << "Error al enviar HTML al cliente" << std::endl;
-							break;
-						}
-						faviconFile.close();
+					
+					std::string response = res.generateResponse();
+					if (send(fds[i].fd, response.c_str(), response.size(), 0) == -1) {
+						std::cerr << "Error al enviar HTML al cliente" << std::endl;
+						break;
 					}
 				}
 			}
