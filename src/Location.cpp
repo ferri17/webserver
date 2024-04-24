@@ -17,6 +17,8 @@ void Location::setIndex(const std::vector<std::string> &index) { _index = index;
 int Location::getAutoindex() const { return _autoindex; }
 void Location::setClose(bool close_) { close = close_; }
 bool Location::getClose() const { return close; }
+std::string Location::getRoot() const { return _root; }
+void Location::setRoot(std::string root) { _root = root; }
 std::map<int, std::string> Location::getErrorPage() const { return _error_page; }
 std::vector<std::string > Location::getAllowMethods() const { return _allow_methods; }
 std::string Location::getUploadStore() const { return _upload_store; }

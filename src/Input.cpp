@@ -126,14 +126,53 @@ int Input::checkValidDirSemiColon(std::string &str)
 	return (1);
 }
 
+int Input::checkIp(std::string &str)
+{
+	std::vector<std::string> ip = split(str, '.');
+
+	if (ip.size() != 4)
+		return (0);
+	for (std::vector<std::string>::iterator it = ip.begin(); it != ip.end(); it++)
+	{
+		if (!limitsNum(*it, 0, 255))
+			return (0);
+	}
+	return (1);
+}
+
+int Input::checkValidListen(std::string &str)
+{
+	if (str.find(":") != str.npos)
+	{
+		std::vector<std::string> splited = split(str, ':');
+		if (checkIp(splited[0]))
+			if (limitsNum(splited[1], 0, 65535))
+				return(1);
+	}
+	else if (limitsNum(str, 0, 65535))
+		return(1);
+	return (0);
+}
+
+
+void addListen(std::string str, Server &s)
+{
+	if (str.find(":") != str.npos)
+	{
+		std::vector<std::string> splited = split(str, ':');
+		s.addListen((t_listen){splited[0], std::atoi(splited[1].c_str())});
+	}
+	else
+		s.addListen((t_listen){"", std::atoi(str.c_str())});
+}
+
 int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &s)
 {
 	if ((lineSplit.size() >= 2 && lineSplit[0] == "location") || flag == OPEN_KEY_LOC || flag == MISS_KEY_LOC || flag == VALID_ARG_LOC)
 		return (checkLocation(lineSplit, flag, s));
-	if (lineSplit.size() == 2 && lineSplit[0] == "listen" && limitsNum(lineSplit[1], 0, 65535))
+	if (lineSplit.size() == 2 && lineSplit[0] == "listen" && checkValidListen(lineSplit[1]))
 	{
-		if (s.getListen() == -1)
-			s.setListen(std::atoi(lineSplit[1].c_str()));
+		addListen(lineSplit[1], s);
 		return (VALID_ARG);
 	}
 	if (lineSplit.size() >= 2 && lineSplit[0] == "server_name" && checkValidNames(lineSplit))
@@ -162,7 +201,7 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 	if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDirSemiColon(lineSplit[1]))
 	{
 		if (s.getRoot().empty())
-			s.setRoot(lineSplit[2]);
+			s.setRoot(lineSplit[1]);
 		return (VALID_ARG);
 	}
 	if (lineSplit.size() == 3 && lineSplit[0] == "error_page" && limitsNum(lineSplit[1], 400, 599) && checkValidDirSemiColon(lineSplit[2]))
@@ -272,6 +311,12 @@ int Input::checkLocationVar(std::vector<std::string> lineSplit, Location &loc)
 	{
 		for (size_t i = 1; i < lineSplit.size(); i++)
 			loc.pushIndex(lineSplit[i]);
+		return (VALID_ARG_LOC);
+	}
+	if (lineSplit.size() == 2 && lineSplit[0] == "root" && checkValidDirSemiColon(lineSplit[1]))
+	{
+		if (loc.getRoot().empty())
+			loc.setRoot(lineSplit[1]);
 		return (VALID_ARG_LOC);
 	}
 	return (KO);

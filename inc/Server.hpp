@@ -13,10 +13,16 @@
 
 #define MAX_LEN_REQUEST_LINE 160000
 
+typedef struct s_listen
+{
+	std::string ip;
+	int	port;
+} t_listen;
+
 class Server
 {
 	private:
-		int							_listen;
+		std::vector<t_listen>		_listen;
 		std::vector<std::string>	_server_name;
 		long						_client_max_body_size;
 		std::string					_root;
@@ -29,7 +35,7 @@ class Server
 		void initDef( void );
 		void startServ( void );
 		//GET & SET
-		int getListen() const;
+		std::vector<t_listen> getListen() const;
 		std::vector<std::string> getServerName() const;
 		long getClientMaxBodySize() const;
 		std::string getRoot() const;
@@ -37,7 +43,7 @@ class Server
 		Location &getLocations(std::string const dir);
 		std::map<std::string, Location> &getLocations();
 		std::map<int, std::string> getErrorPage() const;
-		void setListen(int listen_);
+		void addListen(t_listen listen_);
 		void setServerName(const std::vector<std::string> &serverName);
 		void setClientMaxBodySize(long clientMaxBodySize);
 		void setRoot(const std::string &root);

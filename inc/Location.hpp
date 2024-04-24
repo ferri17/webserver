@@ -20,6 +20,7 @@ class Location
 			std::vector<t_cgi_type> _cgi;
 			std::string _returnPag;
 			std::vector<std::string> _index;
+			std::string _root;
 			bool close;
 	public:
 		Location( void );
@@ -31,6 +32,8 @@ class Location
 		void setUploadStore(const std::string &upload_store);
 		void setReturnPag(const std::string &returnPag);
 		void setIndex(const std::vector<std::string> &index);
+		std::string getRoot() const;
+		void setRoot(std::string root);
 		int getAutoindex() const;
 		std::map<int, std::string> getErrorPage() const;
 		std::vector<std::string > getAllowMethods() const;

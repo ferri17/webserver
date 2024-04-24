@@ -29,6 +29,8 @@ class Input
 		int checkLocationVar(std::vector<std::string> lineSplit, Location &loc);
 		int checkValidPag(std::string &lineSplit);
 		int checkValidCgi(std::string str);
+		int checkIp(std::string &str);
+		int checkValidListen(std::string &str);
 		int checkValidMethods(std::vector<std::string> &lineSplit);
 
 	public:
