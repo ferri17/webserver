@@ -30,7 +30,7 @@
 // #define IF_RANGE "If-Range"
 // #define IF_UNMODIFIED_SINCE "If-Unmodified-Since"
 // #define LAST_MODIFIED "Last-Modified"
-// #define LOCATION "Location"
+#define LOCATION "Location"
 // #define MAX_FORWARDS "Max-Forwards"
 // #define PRAGMA "Pragma"
 // #define PROXY_AUTHENTICATE "Proxy-Authenticate"

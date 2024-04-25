@@ -237,7 +237,7 @@ int Input::checkValidPag(std::string &str)
 		return (0);
 	for (int i = 0; str[i]; i++)
 	{
-		if(isalnum(str[i]) == false && str[i] != '.'  && str[i] != ':' && str[i] != '-' && str[i] != '_' && str[i] != '/')
+		if(isalnum(str[i]) == false && str[i] != '.'  && str[i] != ':' && str[i] != '-' && str[i] != '_' && str[i] != '/' && str[i] != '?' && str[i] != '=')
 			return (0);
 	}
 	return (1);

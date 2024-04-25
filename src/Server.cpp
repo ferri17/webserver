@@ -1,9 +1,5 @@
 
 #include "Server.hpp"
-#include <poll.h>
-#include "Request.hpp"
-#include "Response.hpp"
-#include "Headers.hpp"
 
 Server::Server( void )
 {
@@ -40,152 +36,6 @@ void Server::pushLoactions(const std::pair<std::string, Location> node) { _locat
 void Server::pushServerName(std::string str) { _server_name.push_back(str); }
 void Server::pushErrorPage(std::pair<int, std::string> node) { _error_page.insert(node); }
 
-int Server::initSocket()
-{ 
-	int serverSockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSockfd == -1)
-		throw std::invalid_argument("Error creating socket");
-	
-	struct sockaddr_in serverAddr;
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serverAddr.sin_port = htons(_listen[0].port);
-	if (bind(serverSockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
-	{
-        close(serverSockfd);
-    	throw std::invalid_argument("Error al enlazar el socket a la dirección y puerto");
-    }
-	if (listen(serverSockfd, 5) == -1)
-	{
-        close(serverSockfd);
-    	throw std::invalid_argument("Error al intentar escuchar por conexiones entrantes");
-    }
-	return (serverSockfd);
-}
-
-void Server::startServ( void )
-{
-    int serverSocket = initSocket();
-
-	std::vector<pollfd> fds;
-    fds.push_back(((pollfd){serverSocket, POLLIN, -1}));
-
-	while (true)
-	{
-        int ret = poll(fds.data(), fds.size(), -1); // Espera indefinidamente
-        if (ret == -1)
-		{
-            std::cerr << "Error en poll()\n";
-            break;
-        }
-		if (fds[0].fd == serverSocket && fds[0].revents & POLLIN)
-		{
-			int clientSocketfd = accept(serverSocket, NULL, NULL);
-			fds.push_back(((pollfd){clientSocketfd, POLLIN, 0}));
-		}
-		for	(size_t i = 1; i < fds.size(); i++)
-		{
-			char buffer[1024];
-			std::cout << "ITER: " << i << std::endl;
-			if (fds[i].revents & POLLIN)
-			{
-				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
-				if (readBytes <= 0)
-				{
-					if (readBytes == 0)
-						std::cout << "Cliente desconectado\n";
-					else
-						std::cerr << "Error al recibir datos del cliente\n";
-					close(fds[i].fd);
-					fds.erase(fds.begin() + i);
-					--i; // Ajustar el índice ya que se eliminó un elemento
-				}
-				else
-				{
-					buffer[readBytes] = '\0';
-					std::cout << "==========================================================\n"; 
-					std::cout << buffer << std::endl;
-					std::cout << "==========================================================\n";
-					Request req(buffer);
-					if (req.getErrorCode() != 0)
-					{
-						std::cout <<  req.getErrorCode() << ": " << req.getErrorMessage() << std::endl;
-						exit(0);
-					}
-					std::map<std::string, Location> loc = this->getLocations();
-
-					std::map<std::string, Location>::iterator itLoc = loc.find(req.getRequestTarget());
-					std::cout << req.getRequestTarget() << std::endl;
-					Response res;
-
-					if (itLoc == loc.end())
-					{
-						res.setStatusLine((statusLine){"HTTP/1.1", 404, "Page Not Found"});
-						std::ifstream file("./html/error_pages/404.html");
-
-						std::string html;
-
-						getline(file, html, '\0');
-						file.close();
-						res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
-						res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
-						res.setBody(html);
-					}
-					else
-					{
-						Location loc = itLoc->second;
-
-						std::vector<std::string> indexs = loc.getIndex();
-						std::string fileToOpen;
-						std::vector<std::string>::iterator it = indexs.begin();
-						for (; it != indexs.end(); it++)
-						{
-							fileToOpen = _root + "/" + *it;
-							std::cout << fileToOpen << std::endl;
-							if (access(fileToOpen.c_str(), F_OK | R_OK))
-								break;
-						}
-						if (fileToOpen.empty())
-						{
-							res.setStatusLine((statusLine){"HTTP/1.1", 404, "Page Not Found"});
-						}
-						else if (fileToOpen.find("favicon.ico") != fileToOpen.npos)
-						{
-							std::ifstream fileicon(fileToOpen, std::ios::binary);
-
-							std::string html;
-
-							getline(fileicon, html);
-							fileicon.close();
-							res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "image/x-icon"));
-							res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
-							res.setBody(html);
-						}
-						else
-						{
-							std::ifstream file(fileToOpen);
-
-							std::string html;
-
-							getline(file, html, '\0');
-							file.close();
-							res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
-							res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
-							res.setBody(html);
-						}
-					}
-					
-					std::string response = res.generateResponse();
-					if (send(fds[i].fd, response.c_str(), response.size(), 0) == -1) {
-						std::cerr << "Error al enviar HTML al cliente" << std::endl;
-						break;
-					}
-				}
-			}
-		}
-    }
-}
-
 void Server::clean( void )
 {
 	_listen.clear();
@@ -196,7 +46,6 @@ void Server::clean( void )
 	_server_name.clear();
 	_locations.clear();
 }
-
 
 Server::~Server( void )
 {

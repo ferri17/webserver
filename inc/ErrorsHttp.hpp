@@ -11,7 +11,7 @@
 //#define	PARTIAL_CONTENT 206
 //#define	MULTIPLE_CHOICES 300
 //#define	MOVED_PERMANENTLY 301
-//#define	FOUND 302
+#define	FOUND 302
 //#define	SEE_OTHER 303
 //#define	NOT_MODIFIED 304
 //#define	USE_PROXY 305
@@ -22,7 +22,7 @@
 //#define	FORBIDDEN 403
 #define	NOT_FOUND 404
 //#define	METHOD_NOT_ALLOWED 405
-//#define	NOT_ACCEPTABLE 406
+#define	NOT_ACCEPTABLE 406
 //#define	PROXY_AUTHENTICATION_REQUIRED 407
 //#define	REQUEST_TIMEOUT 408
 //#define	CONFLICT 409
@@ -40,6 +40,16 @@
 //#define	SERVICE_UNAVAILABLE 503
 //#define	GATEWAY_TIMEOUT 504
 #define	HTTP_VERSION_NOT_SUPPORTED 505
+
+// Macro to find de correct msg
+#define ERROR_MESSAGE(code) \
+	((code) == 302 ? "Found" : \
+    ((code) == 400 ? "Bad Request" : \
+    ((code) == 404 ? "Not Found" : \
+    ((code) == 406 ? "Not Acceptable" : \
+    ((code) == 501 ? "Not Implemented" : \
+    ((code) == 505 ? "HTTP Version Not Supported" : \
+    "Unknown Error"))))))
 
 // 400 BAD REQUEST error messages
 #define BAD_REQUEST_STR "Bad request: "

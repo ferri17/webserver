@@ -5,7 +5,9 @@
 #include "Request.hpp"
 #include "Response.hpp"
 #include "Colors.hpp"
-
+#include "NAMETMP.hpp"
+#include "Signals.hpp"
+#include <signal.h>
 // int main(int ac, char **av)
 // {
 // 	(void)ac;
@@ -98,7 +100,8 @@ int main(int ac, char **av)
 				std::cout << it->second << std::endl;
 
 		}
-		s[0].startServ();
+		signal(SIGINT, sigHandler);
+		startServ(s[0]);
 	}
 	catch(const std::exception& e)
 	{
