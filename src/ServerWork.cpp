@@ -136,7 +136,10 @@ void startServ( Server &s )
 	{
         int ret = poll(fds.data(), fds.size(), -1); // Espera indefinidamente
         if (ret == -1)
+		{
+			std::cout << "BYEEE 😀" << std::endl;
             break;
+		}
 		if (fds[0].fd == serverSocket && fds[0].revents & POLLIN)
 		{
 			int clientSocketfd = accept(serverSocket, NULL, NULL);
@@ -209,7 +212,7 @@ void startServ( Server &s )
 						{
 							createDirectory(res, req.getRequestTarget());
 						}
-						if (it == indexs.end())
+						else if (it == indexs.end())
 						{
 							createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
 						}
