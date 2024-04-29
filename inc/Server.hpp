@@ -34,6 +34,7 @@ class Server
 		Server( void );
 		void initDef( void );
 		void startServ( void );
+		void preparePages( void );
 		//GET & SET
 		std::vector<t_listen> getListen() const;
 		std::vector<std::string> getServerName() const;

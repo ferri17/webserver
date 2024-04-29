@@ -25,7 +25,7 @@ class Location
 	public:
 		Location( void );
 		~Location( void );
-
+		void preparePages( std::string rootServ);
 		void setAutoindex(int autoindex);
 		void setErrorPage(const std::map<int, std::string> &error_page);
 		void setCgi(t_cgi_type cgi);

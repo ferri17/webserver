@@ -8,6 +8,26 @@ Location::Location( void )
 	close = false;
 }
 
+void Location::preparePages( std::string rootServ)
+{
+	std::string useRoot;
+
+	_root.empty() ? useRoot = rootServ : useRoot = _root;
+	std::map<int, std::string>::iterator itPag = _error_page.begin();
+
+	for (; itPag != _error_page.end(); itPag++)
+	{
+		itPag->second = useRoot + itPag->second;
+	}
+
+	std::vector<std::string>::iterator itIndex = _index.begin();
+
+	for (; itIndex != _index.end(); itIndex++)
+	{
+		*itIndex = useRoot + '/' + *itIndex;
+	}
+}
+
 void Location::setAutoindex(int autoindex) { _autoindex = autoindex; }
 void Location::setErrorPage(const std::map<int, std::string> &error_page) { _error_page = error_page; }
 void Location::setCgi(const t_cgi_type cgi) { _cgi.push_back(cgi); }

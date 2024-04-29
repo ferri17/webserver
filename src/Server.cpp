@@ -16,6 +16,22 @@ void Server::initDef(void)
 	_error_page.insert(std::pair<int, std::string>(4242, "./html/error.html"));
 }
 
+void Server::preparePages( void )
+{
+	std::map<int, std::string>::iterator itPag = _error_page.begin();
+
+	for (; itPag != _error_page.end(); itPag++)
+	{
+		itPag->second = _root + itPag->second;
+	}
+	std::map<std::string, Location>::iterator itLoc = _locations.begin();
+
+	for (; itLoc != _locations.end(); itLoc++)
+	{
+		itLoc->second.preparePages(_root);
+	}
+}
+
 /// GET & SET
 std::vector<t_listen> Server::getListen() const { return _listen; }
 std::vector<std::string> Server::getServerName() const { return _server_name; }

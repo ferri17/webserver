@@ -92,6 +92,7 @@ int main(int ac, char **av)
 		std::vector<Server>::iterator itS = s.begin();
 		for (; itS != s.end(); itS++)
 		{
+			itS->preparePages();
 			std::cout << GREEN "SERVER:" NC << std::endl;
 			std::cout << *itS << std::endl;
 			std::map<std::string, Location> &l = itS->getLocations();
