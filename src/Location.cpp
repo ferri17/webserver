@@ -10,21 +10,20 @@ Location::Location( void )
 
 void Location::preparePages( std::string rootServ)
 {
-	std::string useRoot;
-
-	_root.empty() ? useRoot = rootServ : useRoot = _root;
+	if(_root.empty())
+		_root = rootServ;
 	std::map<int, std::string>::iterator itPag = _error_page.begin();
 
 	for (; itPag != _error_page.end(); itPag++)
 	{
-		itPag->second = useRoot + itPag->second;
+		itPag->second = _root + itPag->second;
 	}
 
 	std::vector<std::string>::iterator itIndex = _index.begin();
 
 	for (; itIndex != _index.end(); itIndex++)
 	{
-		*itIndex = useRoot + '/' + *itIndex;
+		*itIndex = _root + '/' + *itIndex;
 	}
 }
 

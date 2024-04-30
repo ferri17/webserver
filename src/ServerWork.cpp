@@ -44,6 +44,7 @@ int createDirectory(Response &res, std::string dir)
 	if (!opened)
 		return (1);
 
+	std::cout << "HIIHIHIHIHI" << std::endl;
 	entry = readdir(opened);
 
 	body = "<h1>Directory: " + dir + "</h1>";
@@ -66,16 +67,18 @@ int createResponseImage( std::string fileToOpen, Response &res)
 	std::ifstream fileicon(fileToOpen, std::ios::binary);
 
 	if (!fileicon.is_open())
-		return (0);
+		return (1);
 
 	std::string html;
+	char c;
 
-	getline(fileicon, html);////BAD FORMAT FORM BINARY FILES
+	while (fileicon.get(c))
+		html += c;
 	fileicon.close();
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "image/x-icon"));
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
 	res.setBody(html);
-	return (1);
+	return (0);
 }
 
 int createResponseHtml( std::string fileToOpen, Response &res)
@@ -83,16 +86,33 @@ int createResponseHtml( std::string fileToOpen, Response &res)
 	std::ifstream file(fileToOpen);
 
 	if (!file.is_open())
-		return (0);
-
+		return (1);
 	std::string html;
+	std::cout << fileToOpen << std::endl;
 
 	getline(file, html, '\0');
 	file.close();
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
 	res.setBody(html);
-	return (1);
+	return (0);
+}
+
+int createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ)
+{
+	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
+	if (!errorPageServ.empty() && errorPageServ.find(codeError) != errorPageServ.end())
+	{
+		if (createResponseHtml(errorPageServ[codeError], res) == 0)
+			return (0);
+	}
+	std::string body;
+
+	body += "<h1 style=\"text-align: center;\">" + toString(codeError) + " " + ERROR_MESSAGE(codeError) + "</h1>";
+	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
+	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(body.size())));
+	res.setBody(body);
+	return (0);
 }
 
 int createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ, std::map<int, std::string> errorPageLoc)
@@ -100,12 +120,12 @@ int createResponseError( Response &res, int codeError, std::map<int, std::string
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageLoc.empty() && errorPageLoc.find(codeError) != errorPageLoc.end())
 	{
-		if (createResponseHtml(errorPageLoc[codeError], res))
+		if (createResponseHtml(errorPageLoc[codeError], res) == 0)
 			return (0);
 	}
 	else if (!errorPageServ.empty() && errorPageServ.find(codeError) != errorPageServ.end())
 	{
-		if (createResponseHtml(errorPageServ[codeError], res))
+		if (createResponseHtml(errorPageServ[codeError], res) == 0)
 			return (0);
 	}
 	std::string body;
@@ -151,7 +171,6 @@ std::string partialFind(std::map<std::string, Location> loc, std::string reqTarg
 	(void)reqTarget;
 	for (; itLoc != loc.end(); itLoc++)
 	{
-		std::cout << itLoc->first << std::endl;
 		int i = comparePratial(itLoc->first, reqTarget);
 		if (itLoc->first[i] == '/')
 			return (itLoc->first);
@@ -167,23 +186,42 @@ std::string absolutFind(std::map<std::string, Location> loc, std::string reqTarg
 	return (itLoc->first);
 }
 
-std::string locFind(std::map<std::string, Location> loc, std::string reqTarget)
+std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc, std::string reqTarget)
 {
+	if (reqTarget[reqTarget.size() - 1] == '/')
+		reqTarget.erase(reqTarget.size() - 1);
 	std::string	test = absolutFind(loc, reqTarget);
 	if (test.empty())
 		test = partialFind(loc, reqTarget);
-	return (test);
+	if (test.empty())
+	{
+		std::vector<std::string> splited = split(reqTarget, '/');
+		if (splited.size() == 0)
+			return(std::pair<std::string, std::string>(test, ""));
+		std::string newTarget = reqTarget;
+		int i = newTarget.size();
+
+		newTarget.erase(i - splited[splited.size() - 1].size() - 1, i);
+
+		test = absolutFind(loc, newTarget);
+		if (test.empty())
+			return (std::pair<std::string, std::string>(test, ""));
+		std::cout << test << std::endl;
+		return(std::pair<std::string, std::string>(test, splited[splited.size() - 1]));
+	}
+	return (std::pair<std::string, std::string>(test, ""));
 }
 
 void startServ( Server &s )
 {
     int serverSocket = initSocket(s);
-
+	int done;
 	std::vector<pollfd> fds;
     fds.push_back(((pollfd){serverSocket, POLLIN, -1}));
 	while (signaled == true)
 	{
-        int ret = poll(fds.data(), fds.size(), -1); // Espera indefinidamente
+		done = 0;
+        int ret = poll(fds.data(), fds.size(), -1);
         if (ret == -1)
 		{
 			std::cout << "BYEEE 😀" << std::endl;
@@ -197,7 +235,6 @@ void startServ( Server &s )
 		for	(size_t i = 1; i < fds.size(); i++)
 		{
 			char buffer[1024];
-			std::cout << "ITER: " << i << std::endl;
 			if (fds[i].revents & POLLIN)
 			{
 				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
@@ -209,7 +246,7 @@ void startServ( Server &s )
 						std::cerr << "Error al recibir datos del cliente\n";
 					close(fds[i].fd);
 					fds.erase(fds.begin() + i);
-					--i; // Ajustar el índice ya que se eliminó un elemento
+					--i;
 				}
 				else
 				{
@@ -225,24 +262,21 @@ void startServ( Server &s )
 					}
 					std::map<std::string, Location> loc = s.getLocations();
 
-					std::string nameLoc = locFind(loc, req.getRequestTarget());
+					std::pair<std::string, std::string> dirLocFile = locFind(loc, req.getRequestTarget());
+					std::string nameLoc = dirLocFile.first;
+					std::string fileToOpen = dirLocFile.second;
 					Response res;
 
 					std::cout << "----------------" << nameLoc << "----------------"<< std::endl;
+					std::cout << "----------------" << fileToOpen << "----------------"<< std::endl;
 					if (nameLoc.empty())
-					{
-						/////// CARNE DE SEGFAULT
-						res.setStatusLine((statusLine){"HTTP/1.1", 404, "Page Not Found"});
-						
-						std::string fileToOpen = s.getRoot() + s.getErrorPage()[404];
-						createResponseHtml(fileToOpen, res);
-					}
+						createResponseError(res, NOT_FOUND, s.getErrorPage());
 					else
 					{
-
 						std::map<std::string, Location>::iterator itLoc = loc.find(nameLoc);
 						if (!itLoc->second.getReturnPag().empty())
 						{
+							/// RETURN CODE
 							Location loca = itLoc->second;
 
 							res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
@@ -250,10 +284,10 @@ void startServ( Server &s )
 						}
 						else
 						{
-								Location loca = itLoc->second;
-
+							Location loca = itLoc->second;
+							if (fileToOpen.empty())
+							{
 								std::vector<std::string> indexs = loca.getIndex();
-								std::string fileToOpen;
 								std::vector<std::string>::iterator it = indexs.begin();
 								for (; it != indexs.end(); it++)
 								{
@@ -263,33 +297,42 @@ void startServ( Server &s )
 								}
 								if (it == indexs.end() && loca.getAutoindex() == true)
 								{
+									std::cout << "HO" << std::endl;
 									std::string dirToOpen;						
 									if (loca.getRoot().empty())
 										dirToOpen = nameLoc;
 									else
 										dirToOpen = loca.getRoot();
+									std::cout << "///////////////" << dirToOpen << "///////////////" << std::endl;
 									if (createDirectory(res, dirToOpen))
 										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-									
+									done = 1;
 								}
 								else if (it == indexs.end())
 								{
 									createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
+									done = 1;
 								}
+							}
+							else
+								fileToOpen = loca.getRoot() + "/" + fileToOpen;
+							if (done == 0)
+							{
 								int type = test(req);
 								std::cout << "_________________" << fileToOpen << "_________________"<< std::endl;
-								switch (type)
+								if (type == 1)
 								{
-									case 1:
-										createResponseHtml(fileToOpen, res);
-										break;
-									case 2:
-										createResponseImage(fileToOpen, res);
-										break;
-									default:
-										createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
-										break;
+									if (createResponseHtml(fileToOpen, res))
+										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
 								}
+								else if (type == 2)
+								{
+									if(createResponseImage(fileToOpen, res))
+											createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
+								}
+								else
+									createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
+							}
 						}
 					
 					}
