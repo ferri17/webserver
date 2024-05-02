@@ -7,11 +7,6 @@
 #include "Signals.hpp"
 #include <dirent.h>
 
-/* IMPORTANT THINKS:
-		- ERROR PAGE FROM ROOT (NOT DONE)
-*/
-
-
 int initSocket( Server &s)
 { 
 	int serverSockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -195,6 +190,7 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 		test = partialFind(loc, reqTarget);
 	if (test.empty())
 	{
+		std::cout << "reqTarget: " << reqTarget << std::endl;
 		std::vector<std::string> splited = split(reqTarget, '/');
 		if (splited.size() == 0)
 			return(std::pair<std::string, std::string>(test, ""));
@@ -202,6 +198,12 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 		int i = newTarget.size();
 
 		newTarget.erase(i - splited[splited.size() - 1].size() - 1, i);
+		if (newTarget.size() == 0)
+		{
+			newTarget = reqTarget;
+			newTarget.erase(i - splited[splited.size() - 1].size(), i);
+		}
+		std::cout << "newTarget: " << newTarget << std::endl;
 
 		test = absolutFind(loc, newTarget);
 		if (test.empty())
@@ -212,15 +214,103 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 	return (std::pair<std::string, std::string>(test, ""));
 }
 
+t_cgi_type findExtension(std::string str, std::vector<t_cgi_type> cgi)
+{
+	std::vector<std::string> vec = split(str, '.');
+	t_cgi_type cgi_find;
+
+	if (vec.size() <= 1)
+		return (cgi_find);
+
+	std::string extension = vec[vec.size() - 1];
+	for (std::vector<t_cgi_type>::iterator it = cgi.begin(); it != cgi.end(); it++)
+	{
+		if (it->type == '.' + extension)
+		{
+			cgi_find = *it;
+			break;
+		}
+	}
+	return (cgi_find);
+}
+
+int generateCgi(Response &res, std::vector<t_cgi_type> cgi, std::string file)
+{
+	int pipefd[2];
+    pipe(pipefd);
+	t_cgi_type test = findExtension(file, cgi);
+
+	if (test.file.empty())
+		return (2);
+    pid_t pid = fork();
+
+    if (pid == -1)
+	{
+        std::cerr << "Error al hacer fork" << std::endl;
+        return (1);
+    }
+	else if (pid == 0)
+	{
+        close(pipefd[0]);
+
+        dup2(pipefd[1], STDOUT_FILENO);
+        close(pipefd[1]);
+        char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
+        execve(test.file.c_str(), argv, NULL);
+        exit(1);
+	}
+	else
+	{
+		close(pipefd[1]);
+        std::stringstream ss;
+        char buffer[1024];
+        ssize_t bytes_read;
+        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
+            ss.write(buffer, bytes_read);
+        }
+        int status;
+        waitpid(pid, &status, 0);
+		if (WEXITSTATUS(status) != 0)
+			return (1);
+        close(pipefd[0]);
+		std::string s = ss.str();
+		res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
+		res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(s.size())));
+		res.setBody(s);
+	}
+
+	return (0);
+}
+
+void selectTypeOfResponse(Response &res, Server &s, Location loca, Request &req, std::string fileToOpen)
+{
+	int type = test(req);
+	std::cout << "_________________" << fileToOpen << "_________________"<< std::endl;
+	if (type == 1)
+	{
+		if (createResponseHtml(fileToOpen, res))
+			createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
+	}
+	else if (type == 2)
+	{
+		if(createResponseImage(fileToOpen, res))
+				createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
+	}
+	else
+		createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
+}
+
 void startServ( Server &s )
 {
     int serverSocket = initSocket(s);
 	int done;
+	int fileExist = 0;
 	std::vector<pollfd> fds;
     fds.push_back(((pollfd){serverSocket, POLLIN, -1}));
 	while (signaled == true)
 	{
 		done = 0;
+		fileExist = 0;
         int ret = poll(fds.data(), fds.size(), -1);
         if (ret == -1)
 		{
@@ -276,7 +366,6 @@ void startServ( Server &s )
 						std::map<std::string, Location>::iterator itLoc = loc.find(nameLoc);
 						if (!itLoc->second.getReturnPag().empty())
 						{
-							/// RETURN CODE
 							Location loca = itLoc->second;
 
 							res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
@@ -297,7 +386,6 @@ void startServ( Server &s )
 								}
 								if (it == indexs.end() && loca.getAutoindex() == true)
 								{
-									std::cout << "HO" << std::endl;
 									std::string dirToOpen;						
 									if (loca.getRoot().empty())
 										dirToOpen = nameLoc;
@@ -315,23 +403,22 @@ void startServ( Server &s )
 								}
 							}
 							else
+							{
 								fileToOpen = loca.getRoot() + "/" + fileToOpen;
+								fileExist = 1;
+							}
+							if (done == 0 && fileExist && !loca.getCgi().empty())
+							{
+								std::cout << "D===============D" << fileToOpen << "D===============D"<< std::endl;
+								int error = generateCgi(res, loca.getCgi(), fileToOpen);
+								if (error == 1)
+									createResponseError(res, INTERNAL_SERVER_ERROR, s.getErrorPage(), loca.getErrorPage());
+								if (error != 2)
+									done = 1;
+							}
 							if (done == 0)
 							{
-								int type = test(req);
-								std::cout << "_________________" << fileToOpen << "_________________"<< std::endl;
-								if (type == 1)
-								{
-									if (createResponseHtml(fileToOpen, res))
-										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-								}
-								else if (type == 2)
-								{
-									if(createResponseImage(fileToOpen, res))
-											createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-								}
-								else
-									createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
+								selectTypeOfResponse(res, s, loca, req, fileToOpen);
 							}
 						}
 					
@@ -345,4 +432,8 @@ void startServ( Server &s )
 			}
 		}
     }
+	std::vector<pollfd>::iterator itFd = fds.begin();
+	for (;itFd != fds.end(); itFd++)
+		close(itFd->fd);
+	close(serverSocket);
 }

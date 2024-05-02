@@ -39,7 +39,7 @@ int	Input::limitsNum(std::string num, int min, int max)
 
 	if (num[num.size() - 1] == ';')
 		num.erase(num.size() - 1);
-	else if (min != 400)
+	else if (min != 400 && max != 255)
 		return (0);
 	if (isInt(num))
 	{
@@ -128,7 +128,7 @@ int Input::checkValidDirSemiColon(std::string &str)
 
 int Input::checkIp(std::string &str)
 {
-	std::vector<std::string> ip = split(str, '.');
+	std::vector<std::string> ip = split_r(str, '.');
 
 	if (ip.size() != 4)
 		return (0);
@@ -245,7 +245,11 @@ int Input::checkValidPag(std::string &str)
 
 int Input::checkValidCgi(std::string str)
 {
-	if (str == ".sh") ////// sh ?
+	if (str == ".sh")
+		return (1);
+	else if (str == ".py")
+		return (1);
+	else if (str == ".js")
 		return (1);
 	return (0);
 }

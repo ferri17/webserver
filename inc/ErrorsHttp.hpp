@@ -34,7 +34,7 @@
 //#define	UNSUPPORTED_MEDIA_TYPE 415
 //#define	REQUESTED_RANGE_NOT_SATISFIABLE 416
 //#define	EXPECTATION_FAILED 417
-//#define	INTERNAL_SERVER_ERROR 500
+#define	INTERNAL_SERVER_ERROR 500
 #define	NOT_IMPLEMENTED 501
 //#define	BAD_GATEWAY 502
 //#define	SERVICE_UNAVAILABLE 503
@@ -47,9 +47,10 @@
     ((code) == 400 ? "Bad Request" : \
     ((code) == 404 ? "Not Found" : \
     ((code) == 406 ? "Not Acceptable" : \
+    ((code) == 500 ? "Internal server error" : \
     ((code) == 501 ? "Not Implemented" : \
     ((code) == 505 ? "HTTP Version Not Supported" : \
-    "Unknown Error"))))))
+    "Unknown Error")))))))
 
 // 400 BAD REQUEST error messages
 #define BAD_REQUEST_STR "Bad request: "
