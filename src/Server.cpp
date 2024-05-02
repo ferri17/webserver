@@ -81,7 +81,7 @@ bool	Server::isServerMethod(std::string & method)
 
 std::ostream	&operator<<(std::ostream &out, const Server &nb)
 {
-	out << "Listen: " << nb.getListen()[0].ip << " " << nb.getListen()[0].port << std::endl;
+	//out << "Listen: " << nb.getListen()[0].ip << " " << nb.getListen()[0].port << std::endl;
 	out << "ClientMaxBodySize: " << nb.getClientMaxBodySize() <<std::endl;
 	out << "Root: " << nb.getRoot() << std::endl;
 	out << "Upoad Store: "  << nb.getUploadStore() << std::endl;

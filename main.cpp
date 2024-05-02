@@ -5,7 +5,7 @@
 #include "Request.hpp"
 #include "Response.hpp"
 #include "Colors.hpp"
-#include "NAMETMP.hpp"
+#include "StartServer.hpp"
 #include "Signals.hpp"
 #include <signal.h>
 // int main(int ac, char **av)
@@ -102,7 +102,7 @@ int main(int ac, char **av)
 
 		}
 		signal(SIGINT, sigHandler);
-		startServ(s[0]);
+		startServers(s);
 	}
 	catch(const std::exception& e)
 	{

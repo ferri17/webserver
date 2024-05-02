@@ -5,34 +5,77 @@
 #include "Response.hpp"
 #include "Headers.hpp"
 #include "Signals.hpp"
+#include "StartServer.hpp"
 #include <dirent.h>
 
 /* IMPORTANT THINKS:
 		- ERROR PAGE FROM ROOT (NOT DONE)
 */
 
-
-int initSocket( Server &s)
-{ 
-	int serverSockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSockfd == -1)
-		throw std::invalid_argument("Error creating socket");
+int	createNewSocket(t_listen & list)
+{
+	std::string		ip = list.ip;
+	std::string		port = toString(list.port);
+	int				localSocket, errGai;
+	struct addrinfo	*addr;
+	struct addrinfo	hints;
 	
-	struct sockaddr_in serverAddr;
-	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serverAddr.sin_port = htons(s.getListen()[0].port);
-	if (bind(serverSockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1)
+	if (ip.empty())
+		ip = "localhost";
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	if ((errGai = getaddrinfo(ip.c_str(), port.c_str(), &hints, &addr)) != 0)
 	{
-        close(serverSockfd);
-    	throw std::invalid_argument("Error al enlazar el socket a la dirección y puerto");
-    }
-	if (listen(serverSockfd, 5) == -1)
+		throw std::runtime_error(gai_strerror(errGai));
+	}
+	if ((localSocket = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol)) < 0)
 	{
-        close(serverSockfd);
-    	throw std::invalid_argument("Error al intentar escuchar por conexiones entrantes");
-    }
-	return (serverSockfd);
+		freeaddrinfo(addr);
+		throw std::runtime_error(strerror(errno));
+	}
+	if (fcntl(localSocket, F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0)
+	{
+		freeaddrinfo(addr);
+		throw std::runtime_error(strerror(errno));
+	}
+	if (bind(localSocket, addr->ai_addr, addr->ai_addrlen) != 0)
+	{
+		freeaddrinfo(addr);
+		throw std::runtime_error(strerror(errno));
+	}
+	if (listen(localSocket, MAX_CONNECTION_BACKLOG) != 0)
+	{
+		freeaddrinfo(addr);
+		throw std::runtime_error(strerror(errno));
+	}
+	freeaddrinfo(addr);
+	return (localSocket);
+}
+
+std::vector<std::pair<Server &, int > >	initSockets(std::vector<Server> & s)
+{
+	std::vector<t_listen>									cListen;
+	std::vector<std::pair<Server &, int > >	sockets;
+
+	for (std::vector<Server>::iterator itServ = s.begin(); itServ != s.end(); itServ++)
+	{
+		Server &	currentServ = (*itServ);
+
+		cListen = currentServ.getListen();
+		std::cout << "server #" << itServ - s.begin() << "{";
+		for (std::vector<t_listen>::iterator itListen = cListen.begin(); itListen != cListen.end(); itListen++)
+		{
+			int	sock = createNewSocket(*itListen);
+			sockets.push_back(std::pair<Server &, int>(currentServ, sock));
+			std::cout << sock;
+			if (itListen < cListen.end() - 1)
+				std::cout << ",";
+		}
+		std::cout << "}" << std::endl;
+	}
+	return (sockets);
 }
 
 int createDirectory(Response &res, std::string dir)
@@ -212,137 +255,74 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 	return (std::pair<std::string, std::string>(test, ""));
 }
 
-void startServ( Server &s )
+Server &	getTargetServer(std::vector<std::pair<Server &, int> > sockets, int fdTarget)
 {
-    int serverSocket = initSocket(s);
-	int done;
-	std::vector<pollfd> fds;
-    fds.push_back(((pollfd){serverSocket, POLLIN, -1}));
-	while (signaled == true)
+	for (std::vector<std::pair<Server &, int> >::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
 	{
-		done = 0;
-        int ret = poll(fds.data(), fds.size(), -1);
-        if (ret == -1)
-		{
-			std::cout << "BYEEE 😀" << std::endl;
-            break;
-		}
-		if (fds[0].fd == serverSocket && fds[0].revents & POLLIN)
-		{
-			int clientSocketfd = accept(serverSocket, NULL, NULL);
-			fds.push_back(((pollfd){clientSocketfd, POLLIN, 0}));
-		}
-		for	(size_t i = 1; i < fds.size(); i++)
-		{
-			char buffer[1024];
-			if (fds[i].revents & POLLIN)
-			{
-				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
-				if (readBytes <= 0)
-				{
-					if (readBytes == 0)
-						std::cout << "Cliente desconectado\n";
-					else
-						std::cerr << "Error al recibir datos del cliente\n";
-					close(fds[i].fd);
-					fds.erase(fds.begin() + i);
-					--i;
-				}
-				else
-				{
-					buffer[readBytes] = '\0';
-					std::cout << "==========================================================\n"; 
-					std::cout << buffer << std::endl;
-					std::cout << "==========================================================\n";
-					Request req(buffer);
-					if (req.getErrorCode() != 0)
-					{
-						std::cout <<  req.getErrorCode() << ": " << req.getErrorMessage() << std::endl;
-						exit(0);
-					}
-					std::map<std::string, Location> loc = s.getLocations();
+		if ((*itS).second == fdTarget)
+			return ((*itS).first);
+	}
+	return ((*sockets.begin()).first);
+}
 
-					std::pair<std::string, std::string> dirLocFile = locFind(loc, req.getRequestTarget());
-					std::string nameLoc = dirLocFile.first;
-					std::string fileToOpen = dirLocFile.second;
-					Response res;
+void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets)
+{
+	struct kevent			evSet;
+	struct kevent			evList[2];
+	struct sockaddr_storage	addr;
+	socklen_t				socklen = sizeof(addr);
 
-					std::cout << "----------------" << nameLoc << "----------------"<< std::endl;
-					std::cout << "----------------" << fileToOpen << "----------------"<< std::endl;
-					if (nameLoc.empty())
-						createResponseError(res, NOT_FOUND, s.getErrorPage());
-					else
-					{
-						std::map<std::string, Location>::iterator itLoc = loc.find(nameLoc);
-						if (!itLoc->second.getReturnPag().empty())
-						{
-							/// RETURN CODE
-							Location loca = itLoc->second;
-
-							res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
-							res.addHeaderField(std::pair<std::string, std::string>(LOCATION, loca.getReturnPag()));
-						}
-						else
-						{
-							Location loca = itLoc->second;
-							if (fileToOpen.empty())
-							{
-								std::vector<std::string> indexs = loca.getIndex();
-								std::vector<std::string>::iterator it = indexs.begin();
-								for (; it != indexs.end(); it++)
-								{
-									fileToOpen = *it;
-									if (access((*it).c_str(), F_OK | R_OK) == 0)
-										break;
-								}
-								if (it == indexs.end() && loca.getAutoindex() == true)
-								{
-									std::cout << "HO" << std::endl;
-									std::string dirToOpen;						
-									if (loca.getRoot().empty())
-										dirToOpen = nameLoc;
-									else
-										dirToOpen = loca.getRoot();
-									std::cout << "///////////////" << dirToOpen << "///////////////" << std::endl;
-									if (createDirectory(res, dirToOpen))
-										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-									done = 1;
-								}
-								else if (it == indexs.end())
-								{
-									createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-									done = 1;
-								}
-							}
-							else
-								fileToOpen = loca.getRoot() + "/" + fileToOpen;
-							if (done == 0)
-							{
-								int type = test(req);
-								std::cout << "_________________" << fileToOpen << "_________________"<< std::endl;
-								if (type == 1)
-								{
-									if (createResponseHtml(fileToOpen, res))
-										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-								}
-								else if (type == 2)
-								{
-									if(createResponseImage(fileToOpen, res))
-											createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
-								}
-								else
-									createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
-							}
-						}
-					
-					}
-					std::string response = res.generateResponse();
-					if (send(fds[i].fd, response.c_str(), response.size(), 0) == -1) {
-						std::cerr << "Error al enviar HTML al cliente" << std::endl;
-						break;
-					}
-				}
-			}
+	while (1) {
+		int num_events = kevent(kq, NULL, 0, evList, 2, NULL);
+		for (int i = 0; i < num_events; i++) {
+            // receive new connection
+            if (evList[i].ident == (uintptr_t)local_s) {
+                int fd = accept(evList[i].ident, (struct sockaddr *) &addr, &socklen);
+                if (conn_add(fd) == 0) {
+                    EV_SET(&evSet, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+                    kevent(kq, &evSet, 1, NULL, 0, NULL);
+                    send_welcome_msg(fd);
+                } else {
+                    printf("connection refused.\n");
+                    close(fd);
+                }
+            } // client disconnected
+            else if (evList[i].flags & EV_EOF) {
+                int fd = evList[i].ident;
+                printf("client #%d disconnected.\n", get_conn(fd));
+                EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+                kevent(kq, &evSet, 1, NULL, 0, NULL);
+                conn_del(fd);
+            } // read message from client
+            else if (evList[i].filter == EVFILT_READ) {
+                recv_msg(evList[i].ident);
+            }
 		}
     }
+}
+
+
+void startServers(std::vector<Server> & s)
+{
+	int										kq;
+	std::vector<std::pair<Server &, int> >	localSockets;
+	std::vector<struct kevent>				evSet;
+
+	localSockets = initSockets(s);
+	if ((kq = kqueue()) == -1)
+	{
+		throw std::runtime_error("Error creating kqueue()");
+	}
+	for (std::vector<std::pair<Server &, int> >::iterator itS = localSockets.begin(); itS != localSockets.end(); itS++)
+	{
+		struct kevent	sEvent;
+		
+		EV_SET(&sEvent, (*itS).second, EVFILT_READ, EV_ADD, 0, 0, 0);
+		evSet.push_back(sEvent);
+	}
+	if (kevent(kq, evSet.data(), evSet.size(), NULL, 0, NULL) == -1)
+	{
+		throw std::runtime_error("Error calling kevent()");
+	}
+	runEventLoop(kq, localSockets);
 }

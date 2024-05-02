@@ -39,7 +39,7 @@ int	Input::limitsNum(std::string num, int min, int max)
 
 	if (num[num.size() - 1] == ';')
 		num.erase(num.size() - 1);
-	else if (min != 400)
+	else if (min != 400 && max != 255)
 		return (0);
 	if (isInt(num))
 	{
@@ -128,8 +128,11 @@ int Input::checkValidDirSemiColon(std::string &str)
 
 int Input::checkIp(std::string &str)
 {
-	std::vector<std::string> ip = split(str, '.');
+	std::vector<std::string>	ip;
 
+	if (str == "localhost")
+		return (1);
+	ip = split(str, '.');
 	if (ip.size() != 4)
 		return (0);
 	for (std::vector<std::string>::iterator it = ip.begin(); it != ip.end(); it++)
