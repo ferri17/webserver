@@ -265,7 +265,46 @@ Server &	getTargetServer(std::vector<std::pair<Server &, int> > sockets, int fdT
 	return ((*sockets.begin()).first);
 }
 
-void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets)
+bool	isClientSocket(int fd, std::vector<std::pair<Server &, int> > & sockets)
+{
+	for (std::vector<std::pair<Server &, int> >::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
+	{
+		if ((*itS).second == fd)
+			return (true);
+	}
+	return (false);
+}
+
+void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets, size_t size)
+{
+	struct kevent				evSet;
+	struct sockaddr_in			addrCl;
+	socklen_t addrLenCl = sizeof(addrCl);
+	std::vector<struct kevent>	evList(size);
+	int							nbEvents, clientSocket;
+
+	while (signaled)
+	{
+		nbEvents = kevent(kq, NULL, 0, evList.data(), size, NULL);
+		for (int i = 0; i < nbEvents; i++)
+		{
+			if (isClientSocket(evList[i].ident, localSockets))
+			{
+				if ((clientSocket = accept(evList[i].ident, (sockaddr *)&addrCl, &addrLenCl)) < 0)
+					std::cerr << "Error on accept()" << std::endl;
+				EV_SET(&evSet, clientSocket, EVFILT_READ, EV_ADD, 0, 0, NULL);
+				kevent(kq, &evSet, 1, NULL, 0, NULL);
+				std::cout << "client found" << std::endl;
+				std::string mssg = "echo";
+				send(clientSocket, mssg.data(), mssg.size(), 0);
+				close(clientSocket);
+			}
+		}
+	}
+}
+
+
+/* void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets)
 {
 	struct kevent			evSet;
 	struct kevent			evList[2];
@@ -299,7 +338,7 @@ void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets)
             }
 		}
     }
-}
+} */
 
 
 void startServers(std::vector<Server> & s)
@@ -324,5 +363,5 @@ void startServers(std::vector<Server> & s)
 	{
 		throw std::runtime_error("Error calling kevent()");
 	}
-	runEventLoop(kq, localSockets);
+	runEventLoop(kq, localSockets, evSet.size());
 }
