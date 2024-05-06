@@ -39,7 +39,6 @@ int createDirectory(Response &res, std::string dir)
 	if (!opened)
 		return (1);
 
-	std::cout << "HIIHIHIHIHI" << std::endl;
 	entry = readdir(opened);
 
 	body = "<h1>Directory: " + dir + "</h1>";
@@ -190,7 +189,6 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 		test = partialFind(loc, reqTarget);
 	if (test.empty())
 	{
-		std::cout << "reqTarget: " << reqTarget << std::endl;
 		std::vector<std::string> splited = split(reqTarget, '/');
 		if (splited.size() == 0)
 			return(std::pair<std::string, std::string>(test, ""));
@@ -203,8 +201,6 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 			newTarget = reqTarget;
 			newTarget.erase(i - splited[splited.size() - 1].size(), i);
 		}
-		std::cout << "newTarget: " << newTarget << std::endl;
-
 		test = absolutFind(loc, newTarget);
 		if (test.empty())
 			return (std::pair<std::string, std::string>(test, ""));
@@ -241,9 +237,8 @@ int generateCgi(Response &res, std::vector<t_cgi_type> cgi, std::string file)
 	t_cgi_type test = findExtension(file, cgi);
 
 	if (test.file.empty())
-		return (2);
+		return (1);
     pid_t pid = fork();
-
     if (pid == -1)
 	{
         std::cerr << "Error al hacer fork" << std::endl;
@@ -278,7 +273,6 @@ int generateCgi(Response &res, std::vector<t_cgi_type> cgi, std::string file)
 		res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(s.size())));
 		res.setBody(s);
 	}
-
 	return (0);
 }
 
@@ -357,8 +351,6 @@ void startServ( Server &s )
 					std::string fileToOpen = dirLocFile.second;
 					Response res;
 
-					std::cout << "----------------" << nameLoc << "----------------"<< std::endl;
-					std::cout << "----------------" << fileToOpen << "----------------"<< std::endl;
 					if (nameLoc.empty())
 						createResponseError(res, NOT_FOUND, s.getErrorPage());
 					else
@@ -391,7 +383,6 @@ void startServ( Server &s )
 										dirToOpen = nameLoc;
 									else
 										dirToOpen = loca.getRoot();
-									std::cout << "///////////////" << dirToOpen << "///////////////" << std::endl;
 									if (createDirectory(res, dirToOpen))
 										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
 									done = 1;
@@ -409,12 +400,9 @@ void startServ( Server &s )
 							}
 							if (done == 0 && fileExist && !loca.getCgi().empty())
 							{
-								std::cout << "D===============D" << fileToOpen << "D===============D"<< std::endl;
-								int error = generateCgi(res, loca.getCgi(), fileToOpen);
-								if (error == 1)
+								if (generateCgi(res, loca.getCgi(), fileToOpen))
 									createResponseError(res, INTERNAL_SERVER_ERROR, s.getErrorPage(), loca.getErrorPage());
-								if (error != 2)
-									done = 1;
+								done = 1;
 							}
 							if (done == 0)
 							{

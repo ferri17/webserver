@@ -251,6 +251,8 @@ int Input::checkValidCgi(std::string str)
 		return (1);
 	else if (str == ".js")
 		return (1);
+	else if (str == ".php")
+		return (1);
 	return (0);
 }
 
