@@ -40,3 +40,4 @@ bool	isUsAscii(int c);
 bool	isOWS(int c);
 std::string	stringToLower(std::string str);
 std::string toString(int num);
+std::string trim(std::string& str);

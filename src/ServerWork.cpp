@@ -6,6 +6,8 @@
 #include "Headers.hpp"
 #include "Signals.hpp"
 #include <dirent.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int initSocket( Server &s)
 { 
@@ -230,9 +232,24 @@ t_cgi_type findExtension(std::string str, std::vector<t_cgi_type> cgi)
 	return (cgi_find);
 }
 
-int generateCgi(Response &res, std::vector<t_cgi_type> cgi, std::string file)
+char **genereateEnv(std::vector<std::string> cookies)
+{
+	char **env = new char *[cookies.size() + 1];
+	size_t i = 0;
+
+	for (; i < cookies.size(); i++)
+	{
+		trim(cookies[i]);
+		env[i] = strdup(cookies[i].c_str());
+	}
+	env[i] = NULL;
+	return (env);
+}
+
+int generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, std::vector<std::string> cookies)
 {
 	int pipefd[2];
+
     pipe(pipefd);
 	t_cgi_type test = findExtension(file, cgi);
 
@@ -247,10 +264,12 @@ int generateCgi(Response &res, std::vector<t_cgi_type> cgi, std::string file)
 	else if (pid == 0)
 	{
         close(pipefd[0]);
-
         dup2(pipefd[1], STDOUT_FILENO);
         close(pipefd[1]);
         char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
+		// char **env = genereateEnv(cookies);
+		// (void)env;
+		(void)cookies;
         execve(test.file.c_str(), argv, NULL);
         exit(1);
 	}
@@ -263,15 +282,16 @@ int generateCgi(Response &res, std::vector<t_cgi_type> cgi, std::string file)
         while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
             ss.write(buffer, bytes_read);
         }
+        close(pipefd[0]);
         int status;
         waitpid(pid, &status, 0);
 		if (WEXITSTATUS(status) != 0)
+		{
+			s = ss.str();
+			std::cout << s << std::endl;
 			return (1);
-        close(pipefd[0]);
-		std::string s = ss.str();
-		res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
-		res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(s.size())));
-		res.setBody(s);
+		}
+		s = ss.str();
 	}
 	return (0);
 }
@@ -318,7 +338,7 @@ void startServ( Server &s )
 		}
 		for	(size_t i = 1; i < fds.size(); i++)
 		{
-			char buffer[1024];
+			char buffer[3000000];
 			if (fds[i].revents & POLLIN)
 			{
 				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
@@ -389,7 +409,10 @@ void startServ( Server &s )
 								}
 								else if (it == indexs.end())
 								{
-									createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
+									if (test(req) == 0)
+										createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
+									else
+										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
 									done = 1;
 								}
 							}
@@ -400,21 +423,36 @@ void startServ( Server &s )
 							}
 							if (done == 0 && fileExist && !loca.getCgi().empty())
 							{
-								if (generateCgi(res, loca.getCgi(), fileToOpen))
+								std::string cgiText;
+								std::vector<std::string> coockiesEnv = split(req.getHeaderField()["cookie"], ';');
+								if (generateCgi(loca.getCgi(), fileToOpen, cgiText, coockiesEnv))
 									createResponseError(res, INTERNAL_SERVER_ERROR, s.getErrorPage(), loca.getErrorPage());
+								else
+								{
+									if (send(fds[i].fd, cgiText.c_str(), cgiText.size(), 0) == -1)
+									{
+										std::cerr << "Error al enviar HTML al cliente" << std::endl;
+										break;
+									}
+									done = 2;
+								}
 								done = 1;
 							}
 							if (done == 0)
 							{
 								selectTypeOfResponse(res, s, loca, req, fileToOpen);
+								done = 1;
 							}
 						}
 					
 					}
-					std::string response = res.generateResponse();
-					if (send(fds[i].fd, response.c_str(), response.size(), 0) == -1) {
-						std::cerr << "Error al enviar HTML al cliente" << std::endl;
-						break;
+					if (done == 1)
+					{
+						std::string response = res.generateResponse();
+						if (send(fds[i].fd, response.c_str(), response.size(), 0) == -1) {
+							std::cerr << "Error al enviar HTML al cliente" << std::endl;
+							break;
+						}
 					}
 				}
 			}
