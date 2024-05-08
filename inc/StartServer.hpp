@@ -18,5 +18,5 @@ void									startServers(std::vector<Server> & s);
 std::vector<std::pair<Server &, int > >	initSockets(std::vector<Server> & s);
 Server &								getTargetServer(std::vector<std::pair<Server &, int> >, int fdTarget);
 void									runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets, size_t size);
-bool									isClientSocket(int fd, std::vector<std::pair<Server &, int> > & sockets);
+bool									isServerSocket(int fd, std::vector<std::pair<Server &, int> > & sockets);
 

@@ -265,7 +265,7 @@ Server &	getTargetServer(std::vector<std::pair<Server &, int> > sockets, int fdT
 	return ((*sockets.begin()).first);
 }
 
-bool	isClientSocket(int fd, std::vector<std::pair<Server &, int> > & sockets)
+bool	isServerSocket(int fd, std::vector<std::pair<Server &, int> > & sockets)
 {
 	for (std::vector<std::pair<Server &, int> >::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
 	{
@@ -275,71 +275,64 @@ bool	isClientSocket(int fd, std::vector<std::pair<Server &, int> > & sockets)
 	return (false);
 }
 
-void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets, size_t size)
+void	addNewClient(int kq, struct kevent & event)
 {
+	int							clientSocket;
 	struct kevent				evSet;
 	struct sockaddr_in			addrCl;
-	socklen_t addrLenCl = sizeof(addrCl);
-	std::vector<struct kevent>	evList(size);
-	int							nbEvents, clientSocket;
+	socklen_t					addrLenCl = sizeof(addrCl);
 
-	while (signaled)
+	if ((clientSocket = accept(event.ident, (sockaddr *)&addrCl, &addrLenCl)) < 0)
+		std::cerr << "Error on accept()" << std::endl;
+	else
 	{
-		nbEvents = kevent(kq, NULL, 0, evList.data(), size, NULL);
-		for (int i = 0; i < nbEvents; i++)
-		{
-			if (isClientSocket(evList[i].ident, localSockets))
-			{
-				if ((clientSocket = accept(evList[i].ident, (sockaddr *)&addrCl, &addrLenCl)) < 0)
-					std::cerr << "Error on accept()" << std::endl;
-				EV_SET(&evSet, clientSocket, EVFILT_READ, EV_ADD, 0, 0, NULL);
-				kevent(kq, &evSet, 1, NULL, 0, NULL);
-				std::cout << "client found" << std::endl;
-				std::string mssg = "echo";
-				send(clientSocket, mssg.data(), mssg.size(), 0);
-				close(clientSocket);
-			}
-		}
+		EV_SET(&evSet, clientSocket, EVFILT_READ, EV_ADD, 0, 0, NULL);
+		kevent(kq, &evSet, 1, NULL, 0, NULL);
+		std::string mssg = "## hello new client ##\n";
+		send(clientSocket, mssg.data(), mssg.size(), 0);
 	}
 }
 
-
-/* void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets)
+void	runEventLoop(int kq, std::vector<std::pair<Server &, int> > localSockets, size_t size)
 {
-	struct kevent			evSet;
-	struct kevent			evList[2];
-	struct sockaddr_storage	addr;
-	socklen_t				socklen = sizeof(addr);
+	struct kevent				evSet;
+	std::vector<struct kevent>	evList(size);
+	int							nbEvents;
 
-	while (1) {
-		int num_events = kevent(kq, NULL, 0, evList, 2, NULL);
-		for (int i = 0; i < num_events; i++) {
-            // receive new connection
-            if (evList[i].ident == (uintptr_t)local_s) {
-                int fd = accept(evList[i].ident, (struct sockaddr *) &addr, &socklen);
-                if (conn_add(fd) == 0) {
-                    EV_SET(&evSet, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-                    kevent(kq, &evSet, 1, NULL, 0, NULL);
-                    send_welcome_msg(fd);
-                } else {
-                    printf("connection refused.\n");
-                    close(fd);
-                }
-            } // client disconnected
-            else if (evList[i].flags & EV_EOF) {
-                int fd = evList[i].ident;
-                printf("client #%d disconnected.\n", get_conn(fd));
-                EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-                kevent(kq, &evSet, 1, NULL, 0, NULL);
-                conn_del(fd);
-            } // read message from client
-            else if (evList[i].filter == EVFILT_READ) {
-                recv_msg(evList[i].ident);
-            }
+	while (signaled)
+	{
+		if ((nbEvents = kevent(kq, NULL, 0, evList.data(), size, NULL)) < 0)
+		{
+			std::cerr << strerror(errno) << std::endl;
+			signaled = false;
 		}
-    }
-} */
+		for (int i = 0; i < nbEvents; i++)
+		{
+			if (isServerSocket(evList[i].ident, localSockets))
+			{
+				addNewClient(kq, evList[i]);
 
+			}
+			else if (evList[i].flags & EV_EOF)
+			{
+				int	clientFd = evList[i].ident;
+				std::cout << "Client with fd " << clientFd << " disconnected." << std::endl;
+				EV_SET(&evSet, clientFd, EVFILT_READ, EV_DELETE, NULL ,0, NULL);
+				kevent(kq, &evSet, 1, NULL, 0, NULL);
+				close(clientFd);
+			}
+			else if (evList[i].filter == EVFILT_READ)
+			{
+				char buf[1000];
+				int bytes_read = recv(evList[i].ident, buf, sizeof(buf) - 1, 0);
+				buf[bytes_read] = 0;
+				std::cout << "Client fd " << evList[i].ident << " says: " << buf << std::endl;
+				fflush(stdout);
+			}
+		}
+	}
+	//cleanServer(kq);
+}
 
 void startServers(std::vector<Server> & s)
 {
