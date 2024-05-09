@@ -14,7 +14,6 @@ int initSocket( Server &s)
 	int serverSockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSockfd == -1)
 		throw std::invalid_argument("Error creating socket");
-	
 	struct sockaddr_in serverAddr;
 	serverAddr.sin_family = AF_INET;
 	serverAddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -267,10 +266,8 @@ int generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, s
         dup2(pipefd[1], STDOUT_FILENO);
         close(pipefd[1]);
         char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
-		// char **env = genereateEnv(cookies);
-		// (void)env;
-		(void)cookies;
-        execve(test.file.c_str(), argv, NULL);
+		char **env = genereateEnv(cookies);
+        execve(test.file.c_str(), argv, env);
         exit(1);
 	}
 	else
@@ -279,18 +276,13 @@ int generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, s
         std::stringstream ss;
         char buffer[1024];
         ssize_t bytes_read;
-        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0) {
+        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
             ss.write(buffer, bytes_read);
-        }
         close(pipefd[0]);
         int status;
         waitpid(pid, &status, 0);
 		if (WEXITSTATUS(status) != 0)
-		{
-			s = ss.str();
-			std::cout << s << std::endl;
 			return (1);
-		}
 		s = ss.str();
 	}
 	return (0);
@@ -338,7 +330,7 @@ void startServ( Server &s )
 		}
 		for	(size_t i = 1; i < fds.size(); i++)
 		{
-			char buffer[3000000];
+			char buffer[1028];
 			if (fds[i].revents & POLLIN)
 			{
 				size_t readBytes = recv(fds[i].fd, buffer, sizeof(buffer),0);
@@ -429,6 +421,7 @@ void startServ( Server &s )
 									createResponseError(res, INTERNAL_SERVER_ERROR, s.getErrorPage(), loca.getErrorPage());
 								else
 								{
+									std::cout << cgiText.c_str() << std::endl;
 									if (send(fds[i].fd, cgiText.c_str(), cgiText.size(), 0) == -1)
 									{
 										std::cerr << "Error al enviar HTML al cliente" << std::endl;

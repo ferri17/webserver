@@ -190,7 +190,6 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 			if (s.getClientMaxBodySize() == -1)
 			{
 				long num = atoi(lineSplit[1].c_str());
-				std::cout << num << std::endl;
 				for (int i = 0; i < type; i++)
 					num *= 1024;
 				s.setClientMaxBodySize(num);
