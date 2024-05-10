@@ -317,8 +317,8 @@ void	addNewClient(int kq, int targetSock, std::vector<socketServ> & sockets)
 		tmpServ.clientSock.push_back(newClient);
 		EV_SET(&evSet, newClient, EVFILT_READ, EV_ADD, 0, 0, NULL);
 		kevent(kq, &evSet, 1, NULL, 0, NULL);
-		std::string mssg = "## hello new client ##\n";
-		send(newClient, mssg.data(), mssg.size(), 0);
+	/* 	std::string mssg = "## hello new client ##\n";
+		send(newClient, mssg.data(), mssg.size(), 0); */
 	}
 }
 
@@ -371,7 +371,8 @@ Response	readFromSocket(int clientSocket, std::vector<socketServ> & sockets)
 		buffer[bytes_read] = 0;
 	else
 		std::cerr << "Error recv returned -1" << std::endl;
-
+	std::cout << "Listening from client #" << clientSocket << "#" << std::endl;
+	std::cout << buffer << std::endl;
 	Request	req(buffer);
 	if (req.getErrorCode())
 	{
@@ -379,11 +380,9 @@ Response	readFromSocket(int clientSocket, std::vector<socketServ> & sockets)
 	}
 	Response	res;
 
-	res.addHeaderField(std::pair<std::string, std::string>("content-length", "1"));
-	res.setBody("A");
-	std::cout << "======" << std::endl;
-	std::cout << res.generateResponse() << std::endl;
-	std::cout << "======" << std::endl;
+	std::string mssg = "<!DOCTYPE html><html><body><h1>Hey</h1></body></html>";
+	res.setBody(mssg);
+	res.addHeaderField(std::pair<std::string, std::string>("content-length", toString(mssg.size())));
 	(void)sockets;
 	return (res);
 }
@@ -427,6 +426,8 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 			}
 			else if (evList[i].filter == EVFILT_WRITE)
 			{
+				std::cout << "Writing to client #" << evList[i].ident << "#" << std::endl;
+				std::cout << res.generateResponse() << std::endl;
 				send(evList[i].ident, res.generateResponse().data(), res.generateResponse().size(), 0);
 				EV_SET(&evSet, evList[i].ident, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 				kevent(kq, &evSet, 1, 0, 0, 0);
