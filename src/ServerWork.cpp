@@ -6,8 +6,8 @@
 #include "Headers.hpp"
 #include "Signals.hpp"
 #include <dirent.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include "Cgi.hpp"
+
 
 int initSocket( Server &s)
 { 
@@ -93,13 +93,13 @@ int createResponseHtml( std::string fileToOpen, Response &res)
 	return (0);
 }
 
-int createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ)
+void createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ)
 {
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageServ.empty() && errorPageServ.find(codeError) != errorPageServ.end())
 	{
 		if (createResponseHtml(errorPageServ[codeError], res) == 0)
-			return (0);
+			return ;
 	}
 	std::string body;
 
@@ -107,21 +107,21 @@ int createResponseError( Response &res, int codeError, std::map<int, std::string
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(body.size())));
 	res.setBody(body);
-	return (0);
+	return ;
 }
 
-int createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ, std::map<int, std::string> errorPageLoc)
+void createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ, std::map<int, std::string> errorPageLoc)
 {
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageLoc.empty() && errorPageLoc.find(codeError) != errorPageLoc.end())
 	{
 		if (createResponseHtml(errorPageLoc[codeError], res) == 0)
-			return (0);
+			return ;
 	}
 	else if (!errorPageServ.empty() && errorPageServ.find(codeError) != errorPageServ.end())
 	{
 		if (createResponseHtml(errorPageServ[codeError], res) == 0)
-			return (0);
+			return ;
 	}
 	std::string body;
 
@@ -129,10 +129,10 @@ int createResponseError( Response &res, int codeError, std::map<int, std::string
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(body.size())));
 	res.setBody(body);
-	return (0);
+	return ;
 }
 
-int test(Request req)
+int accpetType(Request req)
 {
 	std::map<std::string, std::string> headers = req.getHeaderField();
 
@@ -209,83 +209,6 @@ std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc,
 		return(std::pair<std::string, std::string>(test, splited[splited.size() - 1]));
 	}
 	return (std::pair<std::string, std::string>(test, ""));
-}
-
-t_cgi_type findExtension(std::string str, std::vector<t_cgi_type> cgi)
-{
-	std::vector<std::string> vec = split(str, '.');
-	t_cgi_type cgi_find;
-
-	if (vec.size() <= 1)
-		return (cgi_find);
-
-	std::string extension = vec[vec.size() - 1];
-	for (std::vector<t_cgi_type>::iterator it = cgi.begin(); it != cgi.end(); it++)
-	{
-		if (it->type == '.' + extension)
-		{
-			cgi_find = *it;
-			break;
-		}
-	}
-	return (cgi_find);
-}
-
-char **genereateEnv(std::vector<std::string> cookies)
-{
-	char **env = new char *[cookies.size() + 1];
-	size_t i = 0;
-
-	for (; i < cookies.size(); i++)
-	{
-		trim(cookies[i]);
-		env[i] = strdup(cookies[i].c_str());
-	}
-	env[i] = NULL;
-	return (env);
-}
-
-int generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, std::vector<std::string> cookies)
-{
-	int pipefd[2];
-
-    pipe(pipefd);
-	t_cgi_type test = findExtension(file, cgi);
-
-	if (test.file.empty())
-		return (1);
-    pid_t pid = fork();
-    if (pid == -1)
-	{
-        std::cerr << "Error al hacer fork" << std::endl;
-        return (1);
-    }
-	else if (pid == 0)
-	{
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-        char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
-		char **env = genereateEnv(cookies);
-        execve(test.file.c_str(), argv, env);
-        exit(1);
-	}
-	else
-	{
-		close(pipefd[1]);
-        std::stringstream ss;
-        char buffer[1024];
-        ssize_t bytes_read;
-        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
-            ss.write(buffer, bytes_read);
-        close(pipefd[0]);
-        int status;
-        waitpid(pid, &status, 0);
-		if (WEXITSTATUS(status) != 0)
-			return (1);
-		s = ss.str();
-	}
-	return (0);
 }
 
 void selectTypeOfResponse(Response &res, Server &s, Location loca, Request &req, std::string fileToOpen)
@@ -401,7 +324,7 @@ void startServ( Server &s )
 								}
 								else if (it == indexs.end())
 								{
-									if (test(req) == 0)
+									if (accpetType(req) == 0)
 										createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
 									else
 										createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
@@ -415,9 +338,11 @@ void startServ( Server &s )
 							}
 							if (done == 0 && fileExist && !loca.getCgi().empty())
 							{
+								Cgi cgi;
 								std::string cgiText;
-								std::vector<std::string> coockiesEnv = split(req.getHeaderField()["cookie"], ';');
-								if (generateCgi(loca.getCgi(), fileToOpen, cgiText, coockiesEnv))
+								std::vector<std::string> cookiesEnv = split(req.getHeaderField()["cookie"], ';');
+								cgi.generateEnv(cookiesEnv);
+								if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText))
 									createResponseError(res, INTERNAL_SERVER_ERROR, s.getErrorPage(), loca.getErrorPage());
 								else
 								{
