@@ -5,7 +5,6 @@ Request::Request(void) : _errorCode(0), _state(__INACTIVE__) {};
 void	Request::parseNewBuffer(const char * buffer)
 {
 	this->_remainder += buffer;
-	std::cout << "remainder: " << _remainder << std::endl;
 	if (this->_remainder.empty())
 		return ;
 	if (this->_state == __SKIPPING_GRBG__ || this->_state == __INACTIVE__)
@@ -33,8 +32,7 @@ void	Request::parseNewBuffer(const char * buffer)
 		// Check request-line syntax and save information in class
 		if (!this->parseRequestLine(requestLine))
 		{
-			//std::cout << "bad line:" << requestLine << std::endl;
-			this->_state = __ERROR_PARSE__;
+			this->_state = __UNSUCCESFUL_PARSE__;
 			return ;
 		}
 		this->_state = __PARSING_HEADERS__;
@@ -46,23 +44,25 @@ void	Request::parseNewBuffer(const char * buffer)
 		{
 			std::string	newLine;
 	
-			newLine = this->_remainder.substr(0, k);
-			if (newLine.back() == CR)
-				newLine.erase(newLine.length() - 1); 
-			this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
 			if (this->_remainder == "\n" || this->_remainder == "\r\n")
 			{
 				this->_remainder = this->_remainder.substr(this->_remainder.find(LF) + 1, std::string::npos);
 				this->_state = __PARSING_BODY__;
-				/*
-				*/
-				this->_state = __SUCCESFUL_PARSE__;
-				/*
-				*/
 				break ;
 			}
+			newLine = this->_remainder.substr(0, k);
+			if (newLine.back() == CR)
+				newLine.erase(newLine.length() - 1);
+			if (!this->parseHeaderField(newLine))
+			{
+				this->_state = __UNSUCCESFUL_PARSE__;
+				return ;
+			}
+			this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
 			if (!this->_remainder.empty())
 				k = this->_remainder.find(LF);
+			else
+				break ;
 		}
 	}
 }
@@ -107,11 +107,8 @@ void	Request::removeEndCarriage(std::string & str)
 /*
 	Cleans and fills header fields/value pairs
 */
-bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
+bool	Request::parseHeaderField(std::string & headerLine)
 {
-	for (std::vector<std::string>::iterator it = headerVec.begin(); it != headerVec.end(); it++)
-	{
-		std::string	headerLine = *it;
 		size_t	separator = headerLine.find(COLON);
 		std::string	fieldName;
 		std::string	fieldValue;
@@ -134,7 +131,6 @@ bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 			return (false);
 		}
 		this->_headerField.insert(std::pair<std::string, std::string>(stringToLower(fieldName), fieldValue));
-	}
 	return (true);
 }
 
@@ -409,18 +405,15 @@ Request::Request(const char * req)
 	if (!this->parseRequestLine(*reqLineIt))
 		return ;
 	// Parse header fields 
-	std::vector<std::string> headerFields(headerItBegin, reqSplit.end());
-	if (!this->parseHeaderFields(headerFields))
-		return ;
+	//std::vector<std::string> headerFields(headerItBegin, reqSplit.end());
+	//if (!this->parseHeaderFields(headerFields))
+	//	return ;
 	// Check header fields validity
 	if (!this->checkHeaderFields())
 		return ;
 	// Read message and check content-length / transfer-encoding
 	if (!this->readBodyMessage(body))
 		return ;
-
-
-	// Check if its better to throw execeptiooooons insetad of if'sssss
 }
 
 bool	Request::isValidFieldName(std::string & str)

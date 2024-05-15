@@ -9,6 +9,19 @@ std::string toString(int num)
 	return(ss.str());
 }
 
+std::string	getTime(void)
+{
+	time_t		rawtime;
+	struct tm *	timeinfo;
+	char		buffer[80];
+
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);	
+	strftime(buffer,sizeof(buffer), "[%d %b %T] ", timeinfo);
+	std::string str(buffer);
+	return (str);
+}
+
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
 	std::vector<std::string> tokens;

@@ -1,8 +1,5 @@
 
-#include "Server.hpp"
 #include <poll.h>
-#include "Request.hpp"
-#include "Response.hpp"
 #include "Headers.hpp"
 #include "Signals.hpp"
 #include "StartServer.hpp"
@@ -47,8 +44,13 @@ int	createNewSocket(t_listen & list)
 	}
 	if (bind(localSocket, addr->ai_addr, addr->ai_addrlen) != 0)
 	{
+		sockaddr_in* sockAddrIn = reinterpret_cast<sockaddr_in*>(addr->ai_addr);
+		int port = ntohs(sockAddrIn->sin_port);
+		std::string	mssgErr = strerror(errno);
+		mssgErr += ": Port -> ";
+		mssgErr += toString(port);
 		freeaddrinfo(addr);
-		throw std::runtime_error(strerror(errno));
+		throw std::runtime_error(mssgErr);
 	}
 	if (listen(localSocket, MAX_CONNECTION_BACKLOG) != 0)
 	{
@@ -61,6 +63,7 @@ int	createNewSocket(t_listen & list)
 
 std::vector<socketServ>	initSockets(std::vector<Server> & s)
 {
+	int						sId = 0;
 	socketServ				socks;
 	std::vector<t_listen>	cListen;
 	std::vector<socketServ>	sockets;
@@ -71,17 +74,22 @@ std::vector<socketServ>	initSockets(std::vector<Server> & s)
 
 		socks.serv = currentServ;
 		cListen = currentServ.getListen();
-		std::cout << "server #" << itServ - s.begin() << "{";
+		std::cout << getTime() << BOLD GREEN "Server #" << sId << " running:" NC << std::endl;
 		for (std::vector<t_listen>::iterator itListen = cListen.begin(); itListen != cListen.end(); itListen++)
 		{
-			int	fd = createNewSocket(*itListen);
-			socks.servSock = fd;
-			sockets.push_back(socks);
-			std::cout << fd;
-			if (itListen < cListen.end() - 1)
-				std::cout << ",";
+			try
+			{
+				int	fd = createNewSocket(*itListen);
+				socks.servSock = fd;
+				sockets.push_back(socks);
+				std::cout << PURPLE "\t\t\tListening: " << (*itListen).ip << ":" << (*itListen).port << NC << std::endl;
+			}
+			catch(const std::exception& e)
+			{
+				std::cerr << getTime() << BOLD RED << e.what() << NC << std::endl;
+			}
 		}
-		std::cout << "}" << std::endl;
+		sId++;
 	}
 	return (sockets);
 }
@@ -310,13 +318,14 @@ void	addNewClient(int kq, int targetSock, std::vector<socketServ> & sockets)
 	socklen_t					addrLenCl = sizeof(addrCl);
 
 	if ((newClient = accept(targetSock, (sockaddr *)&addrCl, &addrLenCl)) < 0)
-		std::cerr << "Accept: " << strerror(errno) << std::endl;
+		std::cerr << getTime() << RED BOLD "Accept: " << strerror(errno) << NC << std::endl;
 	else
 	{
 		socketServ & tmpServ = getSocketServ(targetSock, sockets);
 		tmpServ.clientSock.push_back(newClient);
 		EV_SET(&evSet, newClient, EVFILT_READ, EV_ADD, 0, 0, NULL);
 		kevent(kq, &evSet, 1, NULL, 0, NULL);
+		std::cout << getTime() << GREEN BOLD "Client #" << newClient << " connected" NC << std::endl;
 	}
 }
 
@@ -333,7 +342,6 @@ void	cleanServer(int kq, std::vector<socketServ> & sockets)
 	}
 	if (kq > 0)
 		close(kq);
-	std::cout << "out" << std::endl;
 }
 
 void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
@@ -355,7 +363,7 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
 	EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, NULL ,0, NULL);
 	kevent(kq, &evSet, 1, NULL, 0, NULL);
 	close(fd);
-	std::cout << "Client with fd " << fd << " disconnected." << std::endl;
+	std::cout << getTime() << PURPLE BOLD "Client #" << fd << " disconnected" NC << std::endl;
 }
 
 int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets)
@@ -371,6 +379,7 @@ int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<soc
 	}
 	buffer[bytes_read] = '\0';
 	currentReq.parseNewBuffer(buffer);
+	std::cout << getTime() << BLUE BOLD "Reading data from client #" << clientSocket << "..." << NC << std::endl;
 	(void)sockets;
 	return (0);
 }
@@ -407,18 +416,22 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 				{
 					disconnectClient(kq, clientSocket, sockets);
 				}
-				if (mssg[clientSocket].req.getState() == __SUCCESFUL_PARSE__)
+				if (mssg[clientSocket].req.getState() == __PARSING_BODY__)
 				{
 					Response	tmp;
 					std::string	str = "<h1>Hello " + mssg[clientSocket].req.getHeaderField()["user-agent"] + "</h1>";
 					tmp.setBody(str);
 					tmp.addHeaderField(std::pair<std::string, std::string>("content-length", toString(str.length())));
+					mssg[clientSocket].res = tmp;
 					EV_SET(&evSet, clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 					kevent(kq, &evSet, 1, 0, 0, 0);
 					EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 					kevent(kq, &evSet, 1, 0, 0, 0);
-					std::cout << "a" << std::endl;
 					
+				}
+				else if (mssg[clientSocket].req.getState() == __UNSUCCESFUL_PARSE__)
+				{
+					std::cerr << getTime() << RED BOLD "Error parsing request" NC << std::endl; 
 				}
 				//EV_SET(&evSet, clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 				//kevent(kq, &evSet, 1, 0, 0, 0);
@@ -427,6 +440,7 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 			}
 			else if (evList[i].filter == EVFILT_WRITE)
 			{
+				std::cout << getTime() << YELLOW BOLD "Sending data to client #" << clientSocket << "..." << NC << std::endl;
 				send(clientSocket, mssg[clientSocket].res.generateResponse().data(), mssg[clientSocket].res.generateResponse().size(), 0);
 				EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 				kevent(kq, &evSet, 1, 0, 0, 0);
@@ -445,6 +459,7 @@ void startServers(std::vector<Server> & s)
 	std::vector<socketServ>		sockets;
 	std::vector<struct kevent>	evSet;
 
+	std::cout << getTime() << BOLD GREEN "Starting servers..." NC << std::endl;
 	sockets = initSockets(s);
 	if ((kq = kqueue()) == -1)
 	{

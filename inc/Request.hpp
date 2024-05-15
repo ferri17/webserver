@@ -13,7 +13,7 @@
 #define __PARSING_REQ_LINE__ 3
 #define __PARSING_HEADERS__ 4
 #define __PARSING_BODY__ 5
-#define __ERROR_PARSE__ 6
+#define __UNSUCCESFUL_PARSE__ 6
 #define __SUCCESFUL_PARSE__ 7
 
 typedef struct	requestLine
@@ -41,7 +41,7 @@ class	Request
 		static void			removeEndCarriage(std::string & str);
 		bool				parseRequestLine(std::string & requestLineStr);
 		bool				checkHeaderFields(void);
-		bool				parseHeaderFields(std::vector<std::string> & headerVec);
+		bool				parseHeaderField(std::string & headerLine);
 		bool				readBodyMessage(std::string & body);
 	public:
 		Request(void);

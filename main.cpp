@@ -89,24 +89,12 @@ int main(int ac, char **av)
 			Input test(av[1]);
 			test.checkFormat(s);
 		}
-		std::vector<Server>::iterator itS = s.begin();
-		for (; itS != s.end(); itS++)
-		{
-			itS->preparePages();
-			std::cout << GREEN "SERVER:" NC << std::endl;
-			std::cout << *itS << std::endl;
-			std::map<std::string, Location> &l = itS->getLocations();
-			std::map<std::string, Location>::iterator it = l.begin();
-			for (; it != l.end(); it++)
-				std::cout << it->second << std::endl;
-
-		}
 		signal(SIGINT, sigHandler);
 		startServers(s);
 	}
 	catch(const std::exception& e)
 	{
-		std::cerr << e.what() << '\n';
+		std::cerr << getTime() << BOLD RED << e.what() << NC << std::endl;
 	}
 	return (0);
 }

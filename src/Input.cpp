@@ -402,7 +402,6 @@ bool Input::checkFormat( std::vector<Server> &servers )
 			correct = true;
 			servers.push_back(s);
 			s.clean();
-			std::cout << GREEN "SERVER CREATED" NC << std::endl;
 		}
 		i++;
 	} while (!file.eof());

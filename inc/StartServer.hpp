@@ -13,9 +13,10 @@
 #include "Request.hpp"
 #include "Response.hpp"
 #include "Server.hpp"
+#include "Colors.hpp"
 
 #define MAX_CONNECTION_BACKLOG 10
-#define BUFFER_SIZE 10
+#define BUFFER_SIZE 64
 
 typedef struct socketServ {
 	int					servSock;

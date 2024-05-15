@@ -4,6 +4,8 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <ctime>
+#include "Colors.hpp"
 
 #define KO -1
 #define NOT_INIT 0
@@ -40,3 +42,4 @@ bool	isUsAscii(int c);
 bool	isOWS(int c);
 std::string	stringToLower(std::string str);
 std::string toString(int num);
+std::string	getTime( void );
