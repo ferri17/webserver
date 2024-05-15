@@ -310,31 +310,26 @@ void	addNewClient(int kq, int targetSock, std::vector<socketServ> & sockets)
 	socklen_t					addrLenCl = sizeof(addrCl);
 
 	if ((newClient = accept(targetSock, (sockaddr *)&addrCl, &addrLenCl)) < 0)
-		std::cerr << "Error on accept()" << std::endl;
+		std::cerr << "Accept: " << strerror(errno) << std::endl;
 	else
 	{
 		socketServ & tmpServ = getSocketServ(targetSock, sockets);
 		tmpServ.clientSock.push_back(newClient);
 		EV_SET(&evSet, newClient, EVFILT_READ, EV_ADD, 0, 0, NULL);
 		kevent(kq, &evSet, 1, NULL, 0, NULL);
-	/* 	std::string mssg = "## hello new client ##\n";
-		send(newClient, mssg.data(), mssg.size(), 0); */
 	}
 }
 
-void	cleanServer(int kq, std::vector<std::pair<Server &, int> > & localSockets, std::vector<int> & clientSockets)
+void	cleanServer(int kq, std::vector<socketServ> & sockets)
 {
-	for (std::vector<int>::iterator itV = clientSockets.begin(); itV != clientSockets.end(); itV++)
+	for (std::vector<socketServ>::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
 	{
-		std::cout << "closing client socket " << (*itV) << std::endl;
-		if (*itV > 0)
+		std::vector<int>	cliVec = (*itS).clientSock;
+		for (std::vector<int>::iterator itV = cliVec.begin(); itV != cliVec.end(); itV++)
+		{
 			close(*itV);
-	}
-	for (std::vector<std::pair<Server &, int> >::iterator itS = localSockets.begin(); itS != localSockets.end(); itS++)
-	{
-		std::cout << "closing server socket " << (*itS).second << std::endl;
-		if ((*itS).second > 0)
-			close((*itS).second);
+		}
+		close((*itS).servSock);
 	}
 	if (kq > 0)
 		close(kq);
@@ -363,33 +358,26 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
 	std::cout << "Client with fd " << fd << " disconnected." << std::endl;
 }
 
-Response	readFromSocket(int clientSocket, std::vector<socketServ> & sockets)
+int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets)
 {
-	char buffer[BUFFER_SIZE];
-	int bytes_read = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-	if (bytes_read > 0)
-		buffer[bytes_read] = 0;
-	else
-		std::cerr << "Error recv returned -1" << std::endl;
-	std::cout << "Listening from client #" << clientSocket << "#" << std::endl;
-	std::cout << buffer << std::endl;
-	Request	req(buffer);
-	if (req.getErrorCode())
-	{
-		std::cerr << "Error parsing request: " << req.getErrorMessage() << std::endl;
-	}
-	Response	res;
+	char buffer[BUFFER_SIZE + 1];
+	Request &	currentReq = mssg[clientSocket].req;
 
-	std::string mssg = "<!DOCTYPE html><html><body><h1>Hey</h1></body></html>";
-	res.setBody(mssg);
-	res.addHeaderField(std::pair<std::string, std::string>("content-length", toString(mssg.size())));
+	int bytes_read = recv(clientSocket, buffer, BUFFER_SIZE, 0);
+	if (bytes_read < 0)
+	{
+		std::cerr << strerror(errno) << std::endl;
+		return (1);
+	}
+	buffer[bytes_read] = '\0';
+	currentReq.parseNewBuffer(buffer);
 	(void)sockets;
-	return (res);
+	return (0);
 }
 
 void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 {
-	Response					res;
+	std::map<int, mssg>			mssg;
 	struct kevent				evSet;
 	std::vector<struct kevent>	evList(size);
 	int							nbEvents;
@@ -403,41 +391,52 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 		}
 		for (int i = 0; i < nbEvents; i++)
 		{
-			if (isServerSocket(evList[i].ident, sockets))
+			int	clientSocket = evList[i].ident;
+
+			if (isServerSocket(clientSocket, sockets))
 			{
-				addNewClient(kq, evList[i].ident, sockets);
+				addNewClient(kq, clientSocket, sockets);
 			}
 			else if (evList[i].flags & EV_EOF)
 			{
-				disconnectClient(kq, evList[i].ident, sockets);
+				disconnectClient(kq, clientSocket, sockets);
 			}
 			else if (evList[i].filter == EVFILT_READ)
 			{
-				//read100bytesMessageClient();
-
-				// Generate response and store it
-
-				//Add kevent with EVFILT_WRITE on client socket
-				res = readFromSocket(evList[i].ident, sockets);
-				EV_SET(&evSet, evList[i].ident, EVFILT_READ, EV_DELETE, 0, 0, 0);
-				kevent(kq, &evSet, 1, 0, 0, 0);
-				EV_SET(&evSet, evList[i].ident, EVFILT_WRITE, EV_ADD, 0, 0, 0);
-				kevent(kq, &evSet, 1, 0, 0, 0);
+				if (readFromSocket(clientSocket, mssg, sockets) != 0)
+				{
+					disconnectClient(kq, clientSocket, sockets);
+				}
+				if (mssg[clientSocket].req.getState() == __SUCCESFUL_PARSE__)
+				{
+					Response	tmp;
+					std::string	str = "<h1>Hello " + mssg[clientSocket].req.getHeaderField()["user-agent"] + "</h1>";
+					tmp.setBody(str);
+					tmp.addHeaderField(std::pair<std::string, std::string>("content-length", toString(str.length())));
+					EV_SET(&evSet, clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
+					kevent(kq, &evSet, 1, 0, 0, 0);
+					EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+					kevent(kq, &evSet, 1, 0, 0, 0);
+					std::cout << "a" << std::endl;
+					
+				}
+				//EV_SET(&evSet, clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
+				//kevent(kq, &evSet, 1, 0, 0, 0);
+				//EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+				//kevent(kq, &evSet, 1, 0, 0, 0);
 			}
 			else if (evList[i].filter == EVFILT_WRITE)
 			{
-				std::cout << "Writing to client #" << evList[i].ident << "#" << std::endl;
-				std::cout << res.generateResponse() << std::endl;
-				send(evList[i].ident, res.generateResponse().data(), res.generateResponse().size(), 0);
-				EV_SET(&evSet, evList[i].ident, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+				send(clientSocket, mssg[clientSocket].res.generateResponse().data(), mssg[clientSocket].res.generateResponse().size(), 0);
+				EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 				kevent(kq, &evSet, 1, 0, 0, 0);
-				EV_SET(&evSet, evList[i].ident, EVFILT_READ, EV_ADD, 0, 0, 0);
+				EV_SET(&evSet, clientSocket, EVFILT_READ, EV_ADD, 0, 0, 0);
 				kevent(kq, &evSet, 1, 0, 0, 0);
 			}
 
 		}
 	}
-	//cleanServer(kq, sockets, clientSockets);
+	cleanServer(kq, sockets);
 }
 
 void startServers(std::vector<Server> & s)

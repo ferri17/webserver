@@ -1,5 +1,72 @@
 #include "Request.hpp"
 
+Request::Request(void) : _errorCode(0), _state(__INACTIVE__) {};
+
+void	Request::parseNewBuffer(const char * buffer)
+{
+	this->_remainder += buffer;
+	std::cout << "remainder: " << _remainder << std::endl;
+	if (this->_remainder.empty())
+		return ;
+	if (this->_state == __SKIPPING_GRBG__ || this->_state == __INACTIVE__)
+	{
+		Request::skipLeadingGarbage(this->_remainder);
+		if (this->_remainder.empty())
+		{
+			this->_state = __SKIPPING_GRBG__;
+			return ;
+		}
+		else
+			this->_state = __PARSING_REQ_LINE__;
+	}
+	if (this->_state == __PARSING_REQ_LINE__)
+	{
+		std::string	requestLine;
+		size_t	k = this->_remainder.find(LF);
+		
+		if (k == std::string::npos)
+			return ;
+		requestLine = this->_remainder.substr(0, k);
+		if (requestLine.back() == CR)
+			requestLine.erase(requestLine.length() - 1);
+		this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
+		// Check request-line syntax and save information in class
+		if (!this->parseRequestLine(requestLine))
+		{
+			//std::cout << "bad line:" << requestLine << std::endl;
+			this->_state = __ERROR_PARSE__;
+			return ;
+		}
+		this->_state = __PARSING_HEADERS__;
+	}
+	if (this->_state == __PARSING_HEADERS__)
+	{
+		size_t	k = this->_remainder.find(LF);
+		while(k != std::string::npos)
+		{
+			std::string	newLine;
+	
+			newLine = this->_remainder.substr(0, k);
+			if (newLine.back() == CR)
+				newLine.erase(newLine.length() - 1); 
+			this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
+			if (this->_remainder == "\n" || this->_remainder == "\r\n")
+			{
+				this->_remainder = this->_remainder.substr(this->_remainder.find(LF) + 1, std::string::npos);
+				this->_state = __PARSING_BODY__;
+				/*
+				*/
+				this->_state = __SUCCESFUL_PARSE__;
+				/*
+				*/
+				break ;
+			}
+			if (!this->_remainder.empty())
+				k = this->_remainder.find(LF);
+		}
+	}
+}
+
 /*
 	Remove all CRLF "\r\n" before the request line, it can also remove
 	LF "\n", it doesn't accept any combination like CRLF + LF.
@@ -9,30 +76,36 @@
 	line (CRLF) received prior to the request-line."
 
 */
-void	Request::skipLeadingGarbage(std::string & request)
+void	Request::skipLeadingGarbage(std::string & str)
 {
 	size_t pos = 0;
 
-	if (request.empty())
+	if (str.empty())
 		return ;
 	// Find position after last LF or position after last CRLF
-	if (request.at(0) == LF)
+	if (str.at(0) == LF)
 	{
-		while (pos < request.length() && request.at(pos) == LF)
+		while (pos < str.length() && str.at(pos) == LF)
 			pos++;
 	}
-	else if (request.at(0) == CR)
+	else if (str.at(0) == CR)
 	{
-		while ((pos + 1) < request.length() && request.at(pos) == CR && request.at(pos + 1) == LF)
+		while ((pos + 1) < str.length() && str.at(pos) == CR && str.at(pos + 1) == LF)
 				pos += 2;
 	}
 
-	// Trim string to the first character of the request-line
-	request = request.substr(pos);
+	// Trim string to the first character of the str-line
+	str = str.substr(pos);
+}
+
+void	Request::removeEndCarriage(std::string & str)
+{
+	if (!str.empty() && str.at(str.length() - 1) == CR)
+		str.erase(str.length() - 1);
 }
 
 /*
-
+	Cleans and fills header fields/value pairs
 */
 bool	Request::parseHeaderFields(std::vector<std::string> & headerVec)
 {
@@ -397,6 +470,7 @@ std::string							Request::getRequestTarget(void) const { return (this->_request
 std::string							Request::getProtocolVersion(void) const { return (this->_requestLine._protocolVersion); }
 std::string							Request::getErrorMessage(void) const { return (this->_errorMssg); }
 int									Request::getErrorCode(void) const { return (this->_errorCode); }
+int									Request::getState(void) const { return (this->_state); }
 
 
 

@@ -8,6 +8,14 @@
 #include <ctype.h>
 #include <string>
 
+#define __INACTIVE__ 0
+#define __SKIPPING_GRBG__ 1
+#define __PARSING_REQ_LINE__ 3
+#define __PARSING_HEADERS__ 4
+#define __PARSING_BODY__ 5
+#define __ERROR_PARSE__ 6
+#define __SUCCESFUL_PARSE__ 7
+
 typedef struct	requestLine
 {
 	std::string	_method;
@@ -23,21 +31,25 @@ class	Request
 		std::string							_bodyMssg;
 		int									_errorCode;
 		std::string							_errorMssg;
+		std::string							_remainder;
+		int									_state;
 
 		static bool			isValidFieldName(std::string & str);
 		static bool			isValidFieldValue(std::string & str);
 		static std::string	cleanOWS(std::string str);
-		void				skipLeadingGarbage(std::string & req);
+		static void			skipLeadingGarbage(std::string & str);
+		static void			removeEndCarriage(std::string & str);
 		bool				parseRequestLine(std::string & requestLineStr);
 		bool				checkHeaderFields(void);
 		bool				parseHeaderFields(std::vector<std::string> & headerVec);
 		bool				readBodyMessage(std::string & body);
 	public:
+		Request(void);
 		Request(const char * req);
 		//Request(const Request & other);
 		//Request &	operator=(const Request & other);
 		//~Request(void);
-
+		void								parseNewBuffer(const char * buffer);
 		requestLine							getRequestLine(void) const;
 		std::string							getMethod(void) const;
 		std::string							getRequestTarget(void) const;
@@ -46,6 +58,8 @@ class	Request
 		std::string							getBodyMssg(void) const;
 		std::string							getErrorMessage(void) const;
 		int									getErrorCode(void) const;
+		int									getState(void) const;
+
 };
 
 std::ostream &	operator<<(std::ostream &out, const Request &req);
