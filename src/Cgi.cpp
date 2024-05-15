@@ -4,10 +4,12 @@
 
 Cgi::Cgi()
 {
+
 }
 
 Cgi::~Cgi()
 {
+
 }
 
 t_cgi_type Cgi::findExtension(std::string str, std::vector<t_cgi_type> cgi)
@@ -30,20 +32,29 @@ t_cgi_type Cgi::findExtension(std::string str, std::vector<t_cgi_type> cgi)
 	return (cgi_find);
 }
 
-void Cgi::generateEnv(std::vector<std::string> cookies)
+char **Cgi::generateEnv(std::vector<std::string> cookies)
 {
-	env = new char *[cookies.size() + 1];
+	char **env;
 	size_t i = 0;
 
+	std::cerr << "kjfakjdjkfajkdf\n";
+	std::cerr << cookies.size() << std::endl;
+	if (cookies.size() == 0)
+		return (NULL);
+	env = new char *[cookies.size() + 1];
+	if (env)
+		return (NULL);
 	for (; i < cookies.size(); i++)
 	{
+		std::cerr << cookies[i] << std::endl;
 		trim(cookies[i]);
 		env[i] = strdup(cookies[i].c_str());
 	}
 	env[i] = NULL;
+	return (env);
 }
 
-int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s)
+int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, std::vector<std::string> cookies)
 {
 	int pipefd[2];
 
@@ -57,10 +68,12 @@ int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string 
         return (1);
 	else if (pid == 0)
 	{
+		std::cerr << "HAHAHAHAHAHAHAHAAHAHAHAAHAHAH" << std::endl;
         close(pipefd[0]);
         dup2(pipefd[1], STDOUT_FILENO);
         close(pipefd[1]);
         char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
+		char **env = generateEnv(cookies);
         execve(test.file.c_str(), argv, env);
         exit(1);
 	}
