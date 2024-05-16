@@ -23,11 +23,13 @@ class	Response
 		statusLine							_statusLine;
 		std::map<std::string, std::string>	_headerField;
 		std::string							_bodyMssg;
+		std::string							_cgiResponse;
 	public:
 		Response(void);
 		Response &	operator=(const Response & other);
 		
 		std::string	generateResponse(void);
+		void		setCgiResponse(std::string res);
 		void		setStatusLine(statusLine statusLine);
 		void		setHeaders(std::map<std::string, std::string> headers);
 		void		addHeaderField(std::pair<std::string, std::string> headerField);

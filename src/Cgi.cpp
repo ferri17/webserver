@@ -32,6 +32,26 @@ t_cgi_type Cgi::findExtension(std::string str, std::vector<t_cgi_type> cgi)
 	return (cgi_find);
 }
 
+bool Cgi::validExtension(std::string str, std::vector<t_cgi_type> cgi)
+{
+	std::vector<std::string> vec = split(str, '.');
+	t_cgi_type cgi_find;
+
+	if (vec.size() <= 1)
+		return (false);
+
+	std::string extension = vec[vec.size() - 1];
+	for (std::vector<t_cgi_type>::iterator it = cgi.begin(); it != cgi.end(); it++)
+	{
+		if (it->type == '.' + extension)
+		{
+			cgi_find = *it;
+			return (true);
+		}
+	}
+	return (false);
+}
+
 char **Cgi::generateEnv(std::vector<std::string> cookies)
 {
 	char **env;

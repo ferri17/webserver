@@ -16,8 +16,8 @@ class ResponseGen
 		Response _res;
 		Server _s;
 		int done;
-		void genResFile(std::string fileToOpen, Location loca, std::string nameLoc);
-		std::string responsePriority(std::string fileToOpen, Location loca, std::string nameLoc);
+		void genResFile(std::string &fileToOpen, Location loca, std::string nameLoc);
+		void responsePriority(std::string &fileToOpen, Location loca, std::string nameLoc);
 		int createResponseImage( std::string fileToOpen, Response &res);
 		int createDirectory(Response &res, std::string dir);
 		int createResponseHtml( std::string fileToOpen, Response &res);
@@ -31,6 +31,6 @@ class ResponseGen
 		std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc, std::string reqTarget);
 	public:
 		ResponseGen(Request &req, Server s);
-		std::string DoResponse();
+		Response DoResponse();
 		~ResponseGen();
 };

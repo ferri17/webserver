@@ -10,6 +10,8 @@ std::string	Response::generateResponse(void)
 {
 	std::string	responseStr;
 
+	if (!this->_cgiResponse.empty())
+		return (this->_cgiResponse);
 	responseStr += this->_statusLine._protocolVersion;
 	responseStr += " ";
 	responseStr += toString(this->_statusLine._statusCode);
@@ -40,6 +42,10 @@ Response &	Response::operator=(const Response & other)
 }
 
 
+void	Response::setCgiResponse(std::string res)
+{
+	this->_cgiResponse = res;
+}
 
 void	Response::setStatusLine(statusLine statusLine)
 {

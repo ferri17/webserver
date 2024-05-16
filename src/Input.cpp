@@ -416,6 +416,7 @@ bool Input::checkFormat( std::vector<Server> &servers )
 			correct = true;
 			if (s.getClientMaxBodySize() == -1)
 				s.setClientMaxBodySize(10000);
+			s.preparePages();
 			servers.push_back(s);
 			s.clean();
 		}

@@ -12,7 +12,7 @@ ResponseGen::~ResponseGen()
 	
 }
 
-void ResponseGen::genResFile(std::string fileToOpen, Location loca, std::string nameLoc)
+void ResponseGen::genResFile(std::string &fileToOpen, Location loca, std::string nameLoc)
 {
 	std::vector<std::string> indexs = loca.getIndex();
 	std::vector<std::string>::iterator it = indexs.begin();
@@ -45,9 +45,10 @@ void ResponseGen::genResFile(std::string fileToOpen, Location loca, std::string 
 }
 
 
-std::string ResponseGen::responsePriority(std::string fileToOpen, Location loca, std::string nameLoc)
+void ResponseGen::responsePriority(std::string &fileToOpen, Location loca, std::string nameLoc)
 {
 	int fileExist = 0;
+	Cgi cgi;
 
 	if (fileToOpen.empty())
 		genResFile(fileToOpen, loca, nameLoc);
@@ -56,24 +57,22 @@ std::string ResponseGen::responsePriority(std::string fileToOpen, Location loca,
 		fileToOpen = loca.getRoot() + "/" + fileToOpen;
 		fileExist = 1;
 	}
-	if (done == 0 && fileExist && !loca.getCgi().empty())
+	if (done == 0 && fileExist && !loca.getCgi().empty() && cgi.validExtension(fileToOpen, loca.getCgi()))
 	{
-		Cgi cgi;
 		std::string cgiText;
 		std::string headerCookie = _req.getHeaderField()["cookie"];
 		std::vector<std::string> cookiesEnv = split(headerCookie, ';');
 		if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
 			createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
 		else
-			return (cgiText);
+			_res.setCgiResponse(cgiText);
 		done = 1;
 	}
 	if (done == 0)
 		selectTypeOfResponse(_res, _s, loca, _req, fileToOpen);
-	return("");
 }
 
-std::string ResponseGen::DoResponse()
+Response ResponseGen::DoResponse()
 {
 	std::map<std::string, Location> loc = _s.getLocations();
 	std::pair<std::string, std::string> dirLocFile = locFind(loc, _req.getRequestTarget());
@@ -92,12 +91,10 @@ std::string ResponseGen::DoResponse()
 		}
 		else
 		{
-			std::string response = responsePriority(fileToOpen, loca, fileToOpen);
-			if (!response.empty())
-				return (response);
+			responsePriority(fileToOpen, loca, fileToOpen);
 		}
 	}
-	return (_res.generateResponse());
+	return (_res);
 }
 
 int ResponseGen::createResponseImage( std::string fileToOpen, Response &res)

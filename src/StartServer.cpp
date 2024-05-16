@@ -4,6 +4,7 @@
 #include "Signals.hpp"
 #include "StartServer.hpp"
 #include <dirent.h>
+#include "ResponseGen.hpp"
 
 int	createNewSocket(t_listen & list)
 {
@@ -206,19 +207,6 @@ int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<soc
 	return (0);
 }
 
-Response	generateResponse(Request & req, Server & serv)
-{
-	Response	res;
-
-	std::string	str = "<!DOCTYPE html><html><head><title>Beautiful Website</title><style>body{font-family:sans-serif;margin:20px;background-color:#f0f0f0}header{background-color:#3498db;color:#fff;padding:10px}nav{background-color:#eee;padding:10px}nav ul{list-style:none;padding:0}nav li{display:inline-block;margin-right:20px}nav a{color:#333;text-decoration:none}main{padding:20px}main section{text-align:center}main img{width:50%;border-radius:5px}main p{font-size:18px}footer{background-color:#3498db;color:#fff;padding:10px;text-align:center}</style></head><body><header><h1>Welcome!</h1></header><nav><ul><li><a href=\"#\">Home</a></li><li><a href=\"#\">About</a></li><li><a href=\"#\">Contact</a></li></ul></nav><main><section><img src=\"banner.jpg\" alt=\"Banner Image\"><p>This is a beautiful website.</p></section></main><footer><p>&copy; 2024 Beautiful Website</p></footer></body></html>";
-	res.setBody(str);
-	res.addHeaderField(std::pair<std::string, std::string>("content-length", toString(str.length())));
-	(void)serv;
-	(void)req;
-	return (res);
-}
-
-
 void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets)
 {
 	std::string	remainder;
@@ -228,7 +216,8 @@ void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<so
 	{
 		if (message.req.getState() == __UNSUCCESFUL_PARSE__)
 			std::cerr << RED BOLD << "Error parsing:"  << message.req.getErrorMessage() << NC << std::endl;
-		message.res = generateResponse(message.req, getSocketServ(clientSocket, sockets).serv);
+		ResponseGen	res(message.req, getSocketServ(clientSocket, sockets).serv);
+		message.res = res.DoResponse();
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		kevent(kq, evSet, 2, 0, 0, 0);		

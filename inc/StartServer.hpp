@@ -39,4 +39,4 @@ void					cleanServer(int kq, std::vector<socketServ> & sockets);
 int						readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets);
 void					manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets);
 void					manageResponse(mssg & message, int clientSocket, int kq);
-Response				generateResponse(Request & req, Server & res);
+std::string				generateResponse(Request & req, Server & res);
