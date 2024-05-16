@@ -49,7 +49,7 @@ class	Request
 		//Request(const Request & other);
 		Request &	operator=(const Request & other);
 		//~Request(void);
-		void								parseNewBuffer(const char * buffer);
+		void								parseNewBuffer(const char * buffer, long maxBodySize);
 		requestLine							getRequestLine(void) const;
 		std::string							getMethod(void) const;
 		std::string							getRequestTarget(void) const;

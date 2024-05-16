@@ -186,10 +186,11 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
 	std::cout << getTime() << PURPLE BOLD "Client #" << fd << " disconnected" NC << std::endl;
 }
 
-int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg)
+int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets)
 {
 	char		buffer[BUFFER_SIZE + 1];
 	Request &	currentReq = mssg[clientSocket].req;
+	Server &	currentServ = getSocketServ(clientSocket, sockets).serv;
 
 	int bytes_read = recv(clientSocket, buffer, BUFFER_SIZE, 0);
 	if (bytes_read < 0)
@@ -200,7 +201,7 @@ int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg)
 	else if (bytes_read == 0)
 		return (0);
 	buffer[bytes_read] = '\0';
-	currentReq.parseNewBuffer(buffer);
+	currentReq.parseNewBuffer(buffer, currentServ.getClientMaxBodySize());
 	std::cout << getTime() << BLUE BOLD "Reading data from client #" << clientSocket << "..." << NC << std::endl;
 	return (0);
 }
@@ -209,10 +210,11 @@ Response	generateResponse(Request & req, Server & serv)
 {
 	Response	res;
 
-	std::string	str = "<h1>Hello " + req.getHeaderField()["user-agent"] + "</h1>";
+	std::string	str = "<!DOCTYPE html><html><head><title>Beautiful Website</title><style>body{font-family:sans-serif;margin:20px;background-color:#f0f0f0}header{background-color:#3498db;color:#fff;padding:10px}nav{background-color:#eee;padding:10px}nav ul{list-style:none;padding:0}nav li{display:inline-block;margin-right:20px}nav a{color:#333;text-decoration:none}main{padding:20px}main section{text-align:center}main img{width:50%;border-radius:5px}main p{font-size:18px}footer{background-color:#3498db;color:#fff;padding:10px;text-align:center}</style></head><body><header><h1>Welcome!</h1></header><nav><ul><li><a href=\"#\">Home</a></li><li><a href=\"#\">About</a></li><li><a href=\"#\">Contact</a></li></ul></nav><main><section><img src=\"banner.jpg\" alt=\"Banner Image\"><p>This is a beautiful website.</p></section></main><footer><p>&copy; 2024 Beautiful Website</p></footer></body></html>";
 	res.setBody(str);
 	res.addHeaderField(std::pair<std::string, std::string>("content-length", toString(str.length())));
 	(void)serv;
+	(void)req;
 	return (res);
 }
 
@@ -222,20 +224,14 @@ void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<so
 	std::string	remainder;
 	struct kevent	evSet[2];
 
-	if (message.req.getState() == __SUCCESFUL_PARSE__)
+	if (message.req.getState() == __SUCCESFUL_PARSE__ || message.req.getState() == __UNSUCCESFUL_PARSE__)
 	{
+		if (message.req.getState() == __UNSUCCESFUL_PARSE__)
+			std::cerr << RED BOLD << "Error parsing:"  << message.req.getErrorMessage() << NC << std::endl;
 		message.res = generateResponse(message.req, getSocketServ(clientSocket, sockets).serv);
-		//Remove read event while we are waiting to write
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		kevent(kq, evSet, 2, 0, 0, 0);		
-		remainder = message.req.getRemainder();
-		message.req = Request();
-		message.req.setRemainder(remainder);
-	}
-	else if (message.req.getState() == __UNSUCCESFUL_PARSE__)
-	{
-		std::cerr << getTime() << RED BOLD "Error parsing request" NC << std::endl;
 		remainder = message.req.getRemainder();
 		message.req = Request();
 		message.req.setRemainder(remainder);
@@ -283,7 +279,7 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 			}
 			else if (evList[i].filter == EVFILT_READ)
 			{
-				if (readFromSocket(clientSocket, mssg) != 0)
+				if (readFromSocket(clientSocket, mssg, sockets) != 0)
 				{
 					disconnectClient(kq, clientSocket, sockets);
 				}

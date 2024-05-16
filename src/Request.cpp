@@ -2,7 +2,7 @@
 
 Request::Request(void) : _errorCode(0), _state(__INACTIVE__) {};
 
-void	Request::parseNewBuffer(const char * buffer)
+void	Request::parseNewBuffer(const char * buffer, long maxBodySize)
 {
 	this->_remainder += buffer;
 	if (this->_remainder.empty())
@@ -43,8 +43,8 @@ void	Request::parseNewBuffer(const char * buffer)
 		while(k != std::string::npos)
 		{
 			std::string	newLine;
-	
-			if (this->_remainder == "\n" || this->_remainder == "\r\n")
+
+			if (this->_remainder.find(LF) == 0 || this->_remainder.find("\r\n") == 0)
 			{
 				this->_remainder = this->_remainder.substr(this->_remainder.find(LF) + 1, std::string::npos);
 				this->_state = __PARSING_BODY__;
@@ -88,6 +88,15 @@ void	Request::parseNewBuffer(const char * buffer)
 				this->_remainder = this->_remainder.substr(newPos,std::string::npos);
 				this->_errorCode = BAD_REQUEST;
 				this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
+				this->_state = __UNSUCCESFUL_PARSE__;
+				return ;
+			}
+			if (static_cast<long>(this->_bodyMssg.length() + this->_remainder.length()) > maxBodySize)
+			{
+				int	newPos = maxBodySize - this->_bodyMssg.length();
+				this->_remainder = this->_remainder.substr(newPos,std::string::npos);
+				this->_errorCode = REQUEST_ENTITY_TOO_LARGE;
+				this->_errorMssg = REQUEST_TOO_LARGE_STR;
 				this->_state = __UNSUCCESFUL_PARSE__;
 				return ;
 			}

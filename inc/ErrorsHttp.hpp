@@ -29,7 +29,7 @@
 //#define	GONE 410
 //#define	LENGTH_REQUIRED 411
 //#define	PRECONDITION_FAILED 412
-//#define	REQUEST_ENTITY_TOO_LARGE 413
+#define	REQUEST_ENTITY_TOO_LARGE 413
 //s#define	REQUEST_URI_TOO_LONG 414
 //#define	UNSUPPORTED_MEDIA_TYPE 415
 //#define	REQUESTED_RANGE_NOT_SATISFIABLE 416
@@ -64,6 +64,10 @@
 #define HOST_NOT_FOUND_STR BAD_REQUEST_STR "Host header not found."
 #define CONTRADICTORY_HEADERS_STR BAD_REQUEST_STR "Content-length and transfer-encoding header found."
 #define INVALID_CHUNK_STR BAD_REQUEST_STR "Invalid chunked message."
+
+// 413 REQUEST ENTITY TOO LARGE error messages
+#define REQUEST_TOO_LARGE_STR "Request entity too large: Client max body size exceeded"
+
 
 // 501 NOT IMPLEMENTED error messages
 #define METHOD_NOT_IMPLEMENTED_STR "Not implemented: Method not implemented."
