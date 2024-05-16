@@ -38,4 +38,5 @@ socketServ &			getSocketServ(int targetFd, std::vector<socketServ> & sockets);
 void					cleanServer(int kq, std::vector<socketServ> & sockets);
 int						readFromSocket(int clientSocket, std::map<int, mssg> & mssg);
 void					manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets);
+void					manageResponse(mssg & message, int clientSocket, int kq);
 Response				generateResponse(Request & req, Server & res);

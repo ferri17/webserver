@@ -84,6 +84,8 @@ void	Request::parseNewBuffer(const char * buffer)
 			contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
 			if (this->_bodyMssg.length() + this->_remainder.length() > contentLength)
 			{
+				int	newPos = contentLength - this->_bodyMssg.length();
+				this->_remainder = this->_remainder.substr(newPos,std::string::npos);
 				this->_errorCode = BAD_REQUEST;
 				this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
 				this->_state = __UNSUCCESFUL_PARSE__;
@@ -521,6 +523,8 @@ std::string							Request::getProtocolVersion(void) const { return (this->_reque
 std::string							Request::getErrorMessage(void) const { return (this->_errorMssg); }
 int									Request::getErrorCode(void) const { return (this->_errorCode); }
 int									Request::getState(void) const { return (this->_state); }
+std::string							Request::getRemainder(void) const { return(this->_remainder); }
+void								Request::setRemainder(std::string str) { this->_remainder = str; }
 
 
 

@@ -56,6 +56,8 @@ class	Request
 		std::string							getProtocolVersion(void) const;
 		std::map<std::string, std::string>	getHeaderField(void) const;
 		std::string							getBodyMssg(void) const;
+		std::string							getRemainder(void) const;
+		void								setRemainder(std::string str);
 		std::string							getErrorMessage(void) const;
 		int									getErrorCode(void) const;
 		int									getState(void) const;
