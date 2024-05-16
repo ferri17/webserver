@@ -2,6 +2,7 @@
 #include "Input.hpp"
 #include "Utils.hpp"
 #include "Colors.hpp"
+#include <sys/stat.h>
 
 Input::Input( void ) { correct = 0; }
 
@@ -16,9 +17,17 @@ Input::Input( char *fileToOpen )
 void Input::reopenFile ( void )
 {
 	file.open(fileOpen, std::ios::in);
-
 	if (!file.is_open())
 		throw std::invalid_argument("File inaccessible");
+
+	struct stat fileInfo;
+	if (stat(fileOpen.c_str(), &fileInfo) == 0)
+	{
+		if (S_ISDIR(fileInfo.st_mode))
+			throw std::invalid_argument("Its a directory");
+	}
+	else
+		throw std::runtime_error("Error with archive data");
 }
 
 void Input::eraseAllTabs(std::string& str, const std::string& token) {
@@ -193,7 +202,6 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 			if (s.getClientMaxBodySize() == -1)
 			{
 				long num = atoi(lineSplit[1].c_str());
-				std::cout << num << std::endl;
 				for (int i = 0; i < type; i++)
 					num *= 1024;
 				s.setClientMaxBodySize(num);
@@ -248,7 +256,13 @@ int Input::checkValidPag(std::string &str)
 
 int Input::checkValidCgi(std::string str)
 {
-	if (str == ".sh") ////// sh ?
+	if (str == ".sh")
+		return (1);
+	else if (str == ".py")
+		return (1);
+	else if (str == ".js")
+		return (1);
+	else if (str == ".php")
 		return (1);
 	return (0);
 }
@@ -400,6 +414,8 @@ bool Input::checkFormat( std::vector<Server> &servers )
 		{
 			key_open = false;
 			correct = true;
+			if (s.getClientMaxBodySize() == -1)
+				s.setClientMaxBodySize(10000);
 			servers.push_back(s);
 			s.clean();
 		}

@@ -43,3 +43,4 @@ bool	isOWS(int c);
 std::string	stringToLower(std::string str);
 std::string toString(int num);
 std::string	getTime( void );
+std::string trim(std::string& str);

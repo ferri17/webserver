@@ -43,6 +43,13 @@ std::vector<std::string> split_r(const std::string& s, char delimiter)
 	return (tokens);
 }
 
+std::string trim(std::string& str)
+{
+    str.erase(str.find_last_not_of(' ')+1);
+    str.erase(0, str.find_first_not_of(' '));
+    return str;
+}
+
 bool isInt(const std::string & value)
 {
 	const char	*str = value.c_str();
