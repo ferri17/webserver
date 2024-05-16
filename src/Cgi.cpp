@@ -37,16 +37,13 @@ char **Cgi::generateEnv(std::vector<std::string> cookies)
 	char **env;
 	size_t i = 0;
 
-	std::cerr << "kjfakjdjkfajkdf\n";
-	std::cerr << cookies.size() << std::endl;
 	if (cookies.size() == 0)
 		return (NULL);
 	env = new char *[cookies.size() + 1];
-	if (env)
+	if (!env)
 		return (NULL);
 	for (; i < cookies.size(); i++)
 	{
-		std::cerr << cookies[i] << std::endl;
 		trim(cookies[i]);
 		env[i] = strdup(cookies[i].c_str());
 	}
@@ -68,7 +65,6 @@ int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string 
         return (1);
 	else if (pid == 0)
 	{
-		std::cerr << "HAHAHAHAHAHAHAHAAHAHAHAAHAHAH" << std::endl;
         close(pipefd[0]);
         dup2(pipefd[1], STDOUT_FILENO);
         close(pipefd[1]);

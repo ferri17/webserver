@@ -2,6 +2,7 @@
 #include "Input.hpp"
 #include "Utils.hpp"
 #include "Colors.hpp"
+#include <sys/stat.h>
 
 Input::Input( void ) { correct = 0; }
 
@@ -16,9 +17,17 @@ Input::Input( char *fileToOpen )
 void Input::reopenFile ( void )
 {
 	file.open(fileOpen, std::ios::in);
-
 	if (!file.is_open())
 		throw std::invalid_argument("File inaccessible");
+
+	struct stat fileInfo;
+	if (stat(fileOpen.c_str(), &fileInfo) == 0)
+	{
+		if (S_ISDIR(fileInfo.st_mode))
+			throw std::invalid_argument("Its a directory");
+	}
+	else
+		throw std::runtime_error("Error with archive data");
 }
 
 void Input::eraseAllTabs(std::string& str, const std::string& token) {
@@ -402,6 +411,8 @@ bool Input::checkFormat( std::vector<Server> &servers )
 		{
 			key_open = false;
 			correct = true;
+			if (s.getClientMaxBodySize() == -1)
+				s.setClientMaxBodySize(10000);
 			servers.push_back(s);
 			s.clean();
 			std::cout << GREEN "SERVER CREATED" NC << std::endl;
