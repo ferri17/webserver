@@ -106,7 +106,6 @@ int main(int ac, char **av)
 	}
 	catch(const std::exception& e)
 	{
-		std::cerr << "HULA" << std::endl;
 		std::cerr << e.what() << '\n';
 	}
 	return (0);
