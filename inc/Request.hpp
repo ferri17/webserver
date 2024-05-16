@@ -47,7 +47,7 @@ class	Request
 		Request(void);
 		Request(const char * req);
 		//Request(const Request & other);
-		//Request &	operator=(const Request & other);
+		Request &	operator=(const Request & other);
 		//~Request(void);
 		void								parseNewBuffer(const char * buffer);
 		requestLine							getRequestLine(void) const;

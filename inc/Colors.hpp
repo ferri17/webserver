@@ -1,6 +1,6 @@
 #pragma once
 
-#define GREEN "\033[38;5;154m"
+#define GREEN "\033[38;5;82m"
 #define RED	"\033[38;5;197m"
 #define PURPLE "\033[38;5;171m"
 #define BLUE	"\033[38;5;14m"

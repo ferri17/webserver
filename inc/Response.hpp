@@ -25,8 +25,9 @@ class	Response
 		std::string							_bodyMssg;
 	public:
 		Response(void);
+		Response &	operator=(const Response & other);
+		
 		std::string	generateResponse(void);
-
 		void		setStatusLine(statusLine statusLine);
 		void		setHeaders(std::map<std::string, std::string> headers);
 		void		addHeaderField(std::pair<std::string, std::string> headerField);

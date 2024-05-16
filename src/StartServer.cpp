@@ -366,9 +366,9 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
 	std::cout << getTime() << PURPLE BOLD "Client #" << fd << " disconnected" NC << std::endl;
 }
 
-int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets)
+int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg)
 {
-	char buffer[BUFFER_SIZE + 1];
+	char		buffer[BUFFER_SIZE + 1];
 	Request &	currentReq = mssg[clientSocket].req;
 
 	int bytes_read = recv(clientSocket, buffer, BUFFER_SIZE, 0);
@@ -377,12 +377,46 @@ int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<soc
 		std::cerr << strerror(errno) << std::endl;
 		return (1);
 	}
+	else if (bytes_read == 0)
+		return (0);
 	buffer[bytes_read] = '\0';
 	currentReq.parseNewBuffer(buffer);
 	std::cout << getTime() << BLUE BOLD "Reading data from client #" << clientSocket << "..." << NC << std::endl;
-	(void)sockets;
 	return (0);
 }
+
+Response	generateResponse(Request & req, Server & serv)
+{
+	Response	res;
+
+	std::string	str = "<h1>Hello " + req.getHeaderField()["user-agent"] + "</h1>";
+	res.setBody(str);
+	res.addHeaderField(std::pair<std::string, std::string>("content-length", toString(str.length())));
+	(void)serv;
+	return (res);
+}
+
+
+void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets)
+{
+	struct kevent	evSet[2];
+
+	if (message.req.getState() == __SUCCESFUL_PARSE__)
+	{
+		message.res = generateResponse(message.req, getSocketServ(clientSocket, sockets).serv);
+		//Remove read event while we are waiting to write
+		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
+		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+		kevent(kq, evSet, 2, 0, 0, 0);		
+		message.req = Request();
+	}
+	else if (message.req.getState() == __UNSUCCESFUL_PARSE__)
+	{
+		std::cerr << getTime() << RED BOLD "Error parsing request" NC << std::endl;
+		message.req = Request();
+	}
+}
+
 
 void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 {
@@ -412,31 +446,11 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 			}
 			else if (evList[i].filter == EVFILT_READ)
 			{
-				if (readFromSocket(clientSocket, mssg, sockets) != 0)
+				if (readFromSocket(clientSocket, mssg) != 0)
 				{
 					disconnectClient(kq, clientSocket, sockets);
 				}
-				if (mssg[clientSocket].req.getState() == __PARSING_BODY__)
-				{
-					Response	tmp;
-					std::string	str = "<h1>Hello " + mssg[clientSocket].req.getHeaderField()["user-agent"] + "</h1>";
-					tmp.setBody(str);
-					tmp.addHeaderField(std::pair<std::string, std::string>("content-length", toString(str.length())));
-					mssg[clientSocket].res = tmp;
-					EV_SET(&evSet, clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
-					kevent(kq, &evSet, 1, 0, 0, 0);
-					EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
-					kevent(kq, &evSet, 1, 0, 0, 0);
-					
-				}
-				else if (mssg[clientSocket].req.getState() == __UNSUCCESFUL_PARSE__)
-				{
-					std::cerr << getTime() << RED BOLD "Error parsing request" NC << std::endl; 
-				}
-				//EV_SET(&evSet, clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
-				//kevent(kq, &evSet, 1, 0, 0, 0);
-				//EV_SET(&evSet, clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
-				//kevent(kq, &evSet, 1, 0, 0, 0);
+				manageRequestState(mssg[clientSocket], clientSocket, kq, sockets);
 			}
 			else if (evList[i].filter == EVFILT_WRITE)
 			{
@@ -446,6 +460,7 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 				kevent(kq, &evSet, 1, 0, 0, 0);
 				EV_SET(&evSet, clientSocket, EVFILT_READ, EV_ADD, 0, 0, 0);
 				kevent(kq, &evSet, 1, 0, 0, 0);
+				mssg[clientSocket].res = Response();
 			}
 
 		}

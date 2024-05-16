@@ -28,6 +28,18 @@ std::string	Response::generateResponse(void)
 	return (responseStr);
 }
 
+Response &	Response::operator=(const Response & other)
+{
+	if (this != &other)
+	{
+		this->_statusLine = other._statusLine;
+		this->_headerField = other._headerField;
+		this->_bodyMssg = other._bodyMssg;
+	}
+	return (*this);
+}
+
+
 
 void	Response::setStatusLine(statusLine statusLine)
 {

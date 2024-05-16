@@ -58,11 +58,52 @@ void	Request::parseNewBuffer(const char * buffer)
 				this->_state = __UNSUCCESFUL_PARSE__;
 				return ;
 			}
-			this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
+			this->_remainder = this->_remainder.substr(k + 1, std::string::npos);			
 			if (!this->_remainder.empty())
 				k = this->_remainder.find(LF);
 			else
 				break ;
+		}
+	}
+	if (this->_state == __PARSING_BODY__)
+	{
+		if (!checkHeaderFields())
+		{
+			this->_state = __UNSUCCESFUL_PARSE__;
+			return ;
+		}
+		size_t		contentLength = -1;
+		std::string	transferEncoding;
+
+		std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
+		std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
+
+		if (itLength != this->_headerField.end())
+		{
+			// Read body message using content-length
+			contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
+			if (this->_bodyMssg.length() + this->_remainder.length() > contentLength)
+			{
+				this->_errorCode = BAD_REQUEST;
+				this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
+				this->_state = __UNSUCCESFUL_PARSE__;
+				return ;
+			}
+			this->_bodyMssg += this->_remainder;
+			this->_remainder = "";
+			if (this->_bodyMssg.length() == contentLength)
+			{
+				this->_state = __SUCCESFUL_PARSE__;
+				return ;
+			}
+		}
+		else if (itEncoding != this->_headerField.end())
+		{
+			
+		}
+		else
+		{
+			this->_state = __SUCCESFUL_PARSE__;
 		}
 	}
 }
@@ -186,7 +227,7 @@ bool	Request::checkHeaderFields(void)
 */
 bool	Request::readBodyMessage(std::string & body)
 {
-	size_t			contentLength = -1;
+	size_t		contentLength = -1;
 	std::string	transferEncoding;
 
 	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
@@ -454,6 +495,22 @@ std::string	Request::cleanOWS(std::string str)
 	}
 	return (cleanStr);
 }
+
+Request &	Request::operator=(const Request & other)
+{
+	if (this != &other)
+	{
+		this->_requestLine = other._requestLine;
+		this->_headerField = other._headerField;
+		this->_bodyMssg = other._bodyMssg;
+		this->_errorCode = other._errorCode;
+		this->_errorMssg = other._errorMssg;
+		this->_remainder = other._remainder;
+		this->_state = other._state;
+	}
+	return (*this);
+}
+
 
 requestLine							Request::getRequestLine(void) const { return (this->_requestLine); }
 std::map<std::string, std::string>	Request::getHeaderField(void) const { return (this->_headerField); }
