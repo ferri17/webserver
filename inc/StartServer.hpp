@@ -16,7 +16,8 @@
 #include "Colors.hpp"
 
 #define MAX_CONNECTION_BACKLOG 10
-#define BUFFER_SIZE 64
+#define BUFFER_SIZE 6400
+#define HTTP_ERROR_START 400
 
 typedef struct socketServ {
 	int					servSock;
@@ -26,7 +27,8 @@ typedef struct socketServ {
 
 typedef struct mssg {
 	Request		req;
-	Response	res;
+	std::string	res;
+	bool		closeOnEnd;
 } mssg;
 
 void					startServers(std::vector<Server> & s);
@@ -36,7 +38,7 @@ void					runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size);
 bool					isServerSocket(int fd, std::vector<socketServ> & sockets);
 socketServ &			getSocketServ(int targetFd, std::vector<socketServ> & sockets);
 void					cleanServer(int kq, std::vector<socketServ> & sockets);
-int						readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets);
+void					disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::map<int, mssg> & mssg);
+void					readFromSocket(int kq, int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets);
 void					manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets);
-void					manageResponse(mssg & message, int clientSocket, int kq);
-std::string				generateResponse(Request & req, Server & res);
+void					manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets, std::map<int, mssg> & m);

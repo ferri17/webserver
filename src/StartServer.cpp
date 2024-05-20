@@ -165,7 +165,7 @@ void	cleanServer(int kq, std::vector<socketServ> & sockets)
 		close(kq);
 }
 
-void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
+void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::map<int, mssg> & mssg)
 {
 	struct kevent	evSet;
 
@@ -181,13 +181,14 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets)
 			}
 		}
 	}
+	mssg.erase(fd);
 	EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, NULL ,0, NULL);
 	kevent(kq, &evSet, 1, NULL, 0, NULL);
 	close(fd);
 	std::cout << getTime() << PURPLE BOLD "Client #" << fd << " disconnected" NC << std::endl;
 }
 
-int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets)
+void	readFromSocket(int kq, int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets)
 {
 	char		buffer[BUFFER_SIZE + 1];
 	Request &	currentReq = mssg[clientSocket].req;
@@ -196,15 +197,13 @@ int	readFromSocket(int clientSocket, std::map<int, mssg> & mssg, std::vector<soc
 	int bytes_read = recv(clientSocket, buffer, BUFFER_SIZE, 0);
 	if (bytes_read < 0)
 	{
+		disconnectClient(kq, clientSocket, sockets, mssg);
 		std::cerr << strerror(errno) << std::endl;
-		return (1);
+		return ;
 	}
-	else if (bytes_read == 0)
-		return (0);
 	buffer[bytes_read] = '\0';
 	currentReq.parseNewBuffer(buffer, currentServ.getClientMaxBodySize());
 	std::cout << getTime() << BLUE BOLD "Reading data from client #" << clientSocket << "..." << NC << std::endl;
-	return (0);
 }
 
 void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets)
@@ -212,12 +211,14 @@ void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<so
 	std::string	remainder;
 	struct kevent	evSet[2];
 
-	if (message.req.getState() == __SUCCESFUL_PARSE__ || message.req.getState() == __UNSUCCESFUL_PARSE__)
+	if (message.req.getState() == __FINISHED__)
 	{
-		if (message.req.getState() == __UNSUCCESFUL_PARSE__)
-			std::cerr << RED BOLD << "Error parsing:"  << message.req.getErrorMessage() << NC << std::endl;
 		ResponseGen	res(message.req, getSocketServ(clientSocket, sockets).serv);
-		message.res = res.DoResponse();
+		if (message.req.getErrorCode() >= HTTP_ERROR_START)
+			message.closeOnEnd = true;
+		else
+			message.closeOnEnd = false;
+		message.res = res.DoResponse().generateResponse();
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		kevent(kq, evSet, 2, 0, 0, 0);		
@@ -227,16 +228,29 @@ void	manageRequestState(mssg & message, int clientSocket, int kq, std::vector<so
 	}
 }
 
-void	manageResponse(mssg & message, int clientSocket, int kq)
+void	manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets, std::map<int, mssg> & m)
 {
-	struct kevent evSet[2];
+	mssg &			message = m[clientSocket];
+	std::string		buff;
+	struct kevent	evSet[2];
 
+	buff = message.res.substr(0, BUFFER_SIZE);
+	std::cout << buff << std::endl;
+	message.res = message.res.substr(buff.size(), std::string::npos);
 	std::cout << getTime() << YELLOW BOLD "Sending data to client #" << clientSocket << "..." << NC << std::endl;
-	send(clientSocket, message.res.generateResponse().data(), message.res.generateResponse().size(), 0);
-	EV_SET(&evSet[0], clientSocket, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
-	EV_SET(&evSet[1], clientSocket, EVFILT_READ, EV_ADD, 0, 0, 0);
-	kevent(kq, evSet, 2, 0, 0, 0);
-	message.res = Response();
+	send(clientSocket, message.res.data(), message.res.size(), 0);
+	if (message.res.empty())
+	{
+		std::cout << "emotyyy" << std::endl;
+		EV_SET(&evSet[0], clientSocket, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
+		EV_SET(&evSet[1], clientSocket, EVFILT_READ, EV_ADD, 0, 0, 0);
+		kevent(kq, evSet, 2, 0, 0, 0);
+		message.res.clear();
+		if (message.closeOnEnd)
+			disconnectClient(kq, clientSocket, sockets, m);
+		else
+			disconnectClient(kq, clientSocket, sockets, m);
+	}
 }
 
 
@@ -246,7 +260,7 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 	std::map<int, mssg>			mssg;
 	std::vector<struct kevent>	evList(size);
 	int							nbEvents;
-
+	
 	while (signaled)
 	{
 		if ((nbEvents = kevent(kq, NULL, 0, evList.data(), size, NULL)) < 0)
@@ -259,25 +273,16 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 			int	clientSocket = evList[i].ident;
 
 			if (isServerSocket(clientSocket, sockets))
-			{
 				addNewClient(kq, clientSocket, sockets);
-			}
 			else if (evList[i].flags & EV_EOF)
-			{
-				disconnectClient(kq, clientSocket, sockets);
-			}
+				disconnectClient(kq, clientSocket, sockets, mssg);
 			else if (evList[i].filter == EVFILT_READ)
 			{
-				if (readFromSocket(clientSocket, mssg, sockets) != 0)
-				{
-					disconnectClient(kq, clientSocket, sockets);
-				}
+				readFromSocket(kq, clientSocket, mssg, sockets);
 				manageRequestState(mssg[clientSocket], clientSocket, kq, sockets);
 			}
 			else if (evList[i].filter == EVFILT_WRITE)
-			{
-				manageResponse(mssg[clientSocket], clientSocket, kq);
-			}
+				manageResponse(clientSocket, kq, sockets, mssg);
 		}
 	}
 	cleanServer(kq, sockets);

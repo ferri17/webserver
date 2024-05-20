@@ -11,7 +11,7 @@ NAME = webserv
 FLAGS = -std=c++98 -Wall -Wextra -Werror #-fsanitize=address
 DEPFLAGS = -MMD -MP
 
-FILES_SRC = Input.cpp Utils.cpp Server.cpp Request.cpp Response.cpp Location.cpp StartServer.cpp Signals.cpp Cgi.cpp ResponseGen.cpp
+FILES_SRC = Input.cpp Utils.cpp Server.cpp Request.cpp Request_utils.cpp Response.cpp Location.cpp StartServer.cpp Signals.cpp Cgi.cpp ResponseGen.cpp
 MAIN = main.cpp
 DIR_OBJ = .tmp/
 

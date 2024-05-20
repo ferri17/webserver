@@ -1,159 +1,141 @@
 #include "Request.hpp"
 
-Request::Request(void) : _errorCode(0), _state(__INACTIVE__) {};
-
-void	Request::parseNewBuffer(const char * buffer, long maxBodySize)
-{
-	this->_remainder += buffer;
-	if (this->_remainder.empty())
-		return ;
-	if (this->_state == __SKIPPING_GRBG__ || this->_state == __INACTIVE__)
-	{
-		Request::skipLeadingGarbage(this->_remainder);
-		if (this->_remainder.empty())
-		{
-			this->_state = __SKIPPING_GRBG__;
-			return ;
-		}
-		else
-			this->_state = __PARSING_REQ_LINE__;
-	}
-	if (this->_state == __PARSING_REQ_LINE__)
-	{
-		std::string	requestLine;
-		size_t	k = this->_remainder.find(LF);
-		
-		if (k == std::string::npos)
-			return ;
-		requestLine = this->_remainder.substr(0, k);
-		if (requestLine.back() == CR)
-			requestLine.erase(requestLine.length() - 1);
-		this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
-		// Check request-line syntax and save information in class
-		if (!this->parseRequestLine(requestLine))
-		{
-			this->_state = __UNSUCCESFUL_PARSE__;
-			return ;
-		}
-		this->_state = __PARSING_HEADERS__;
-	}
-	if (this->_state == __PARSING_HEADERS__)
-	{
-		size_t	k = this->_remainder.find(LF);
-		while(k != std::string::npos)
-		{
-			std::string	newLine;
-
-			if (this->_remainder.find(LF) == 0 || this->_remainder.find("\r\n") == 0)
-			{
-				this->_remainder = this->_remainder.substr(this->_remainder.find(LF) + 1, std::string::npos);
-				this->_state = __PARSING_BODY__;
-				break ;
-			}
-			newLine = this->_remainder.substr(0, k);
-			if (newLine.back() == CR)
-				newLine.erase(newLine.length() - 1);
-			if (!this->parseHeaderField(newLine))
-			{
-				this->_state = __UNSUCCESFUL_PARSE__;
-				return ;
-			}
-			this->_remainder = this->_remainder.substr(k + 1, std::string::npos);			
-			if (!this->_remainder.empty())
-				k = this->_remainder.find(LF);
-			else
-				break ;
-		}
-	}
-	if (this->_state == __PARSING_BODY__)
-	{
-		if (!checkHeaderFields())
-		{
-			this->_state = __UNSUCCESFUL_PARSE__;
-			return ;
-		}
-		size_t		contentLength = -1;
-		std::string	transferEncoding;
-
-		std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
-		std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
-
-		if (itLength != this->_headerField.end())
-		{
-			// Read body message using content-length
-			contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
-			if (this->_bodyMssg.length() + this->_remainder.length() > contentLength)
-			{
-				int	newPos = contentLength - this->_bodyMssg.length();
-				this->_remainder = this->_remainder.substr(newPos,std::string::npos);
-				this->_errorCode = BAD_REQUEST;
-				this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
-				this->_state = __UNSUCCESFUL_PARSE__;
-				return ;
-			}
-			if (static_cast<long>(this->_bodyMssg.length() + this->_remainder.length()) > maxBodySize)
-			{
-				int	newPos = maxBodySize - this->_bodyMssg.length();
-				this->_remainder = this->_remainder.substr(newPos,std::string::npos);
-				this->_errorCode = REQUEST_ENTITY_TOO_LARGE;
-				this->_errorMssg = REQUEST_TOO_LARGE_STR;
-				this->_state = __UNSUCCESFUL_PARSE__;
-				return ;
-			}
-			this->_bodyMssg += this->_remainder;
-			this->_remainder = "";
-			if (this->_bodyMssg.length() == contentLength)
-			{
-				this->_state = __SUCCESFUL_PARSE__;
-				return ;
-			}
-		}
-		else if (itEncoding != this->_headerField.end())
-		{
-			
-		}
-		else
-		{
-			this->_state = __SUCCESFUL_PARSE__;
-		}
-	}
-}
+Request::Request(void) : _errorCode(0), _state(__SKIPPING_GRBG__) {};
+Request::~Request(void) {};
 
 /*
-	Remove all CRLF "\r\n" before the request line, it can also remove
-	LF "\n", it doesn't accept any combination like CRLF + LF.
+	Parse the request syntax according to HTTP/1.1 as defined in RFC 9112.
 
-	RFC 9112: "In the interest of robustness, a server that is expecting 
-	to receive and parse a request-line SHOULD ignore at least one empty 
-	line (CRLF) received prior to the request-line."
-
+	RFC 9112:"The normal procedure for parsing an HTTP message is to read 
+	the start-line into a structure, read each header field line into a hash 
+	table by field name until the empty line, and then use the parsed data to 
+	determine if a message body is expected. If a message body has been 
+	indicated, then it is read as a stream until an amount of octets equal to 
+	the message body length is read or the connection is closed."
 */
-void	Request::skipLeadingGarbage(std::string & str)
+void	Request::parseNewBuffer(const char * buffer, long maxBodySize)
 {
-	size_t pos = 0;
-
-	if (str.empty())
-		return ;
-	// Find position after last LF or position after last CRLF
-	if (str.at(0) == LF)
+	try
 	{
-		while (pos < str.length() && str.at(pos) == LF)
-			pos++;
+		this->_remainder += buffer;
+		if (this->_remainder.empty())
+			return ;
+		if (this->_state == __SKIPPING_GRBG__)
+			this->skippingGarbage();
+		if (this->_state == __PARSING_REQ_LINE__)
+			this->parsingRequestLine();
+		if (this->_state == __PARSING_HEADERS__)
+			this->parsingHeaders();
+		if (this->_state == __PARSING_BODY__)
+			this->parsingBody(maxBodySize);
 	}
-	else if (str.at(0) == CR)
+	catch(const std::exception& e)
 	{
-		while ((pos + 1) < str.length() && str.at(pos) == CR && str.at(pos + 1) == LF)
-				pos += 2;
+		this->_state = __FINISHED__;
+		std::cerr << RED BOLD << "Error parsing:"  << this->getErrorMessage() << NC << std::endl;
 	}
-
-	// Trim string to the first character of the str-line
-	str = str.substr(pos);
 }
 
-void	Request::removeEndCarriage(std::string & str)
+void	Request::skippingGarbage(void)
 {
-	if (!str.empty() && str.at(str.length() - 1) == CR)
-		str.erase(str.length() - 1);
+	Request::skipLeadingGarbage(this->_remainder);
+	if (this->_remainder.empty())
+	{
+		this->_state = __SKIPPING_GRBG__;
+		return ;
+	}
+	else
+		this->_state = __PARSING_REQ_LINE__;
+}
+
+void	Request::parsingRequestLine(void)
+{
+	std::string	requestLine;
+	size_t	k = this->_remainder.find(LF);
+	
+	if (k == std::string::npos)
+		return ;
+	requestLine = this->_remainder.substr(0, k);
+	if (requestLine.back() == CR)
+		requestLine.erase(requestLine.length() - 1);
+	this->_remainder = this->_remainder.substr(k + 1, std::string::npos);
+	// Check request-line syntax and save information in class
+	if (!this->parseRequestLine(requestLine))
+		throw std::runtime_error("Error parsing request-line");
+	this->_state = __PARSING_HEADERS__;
+}
+
+void	Request::parsingHeaders(void)
+{
+	size_t	k = this->_remainder.find(LF);
+	while(k != std::string::npos)
+	{
+		std::string	newLine;
+		if (this->_remainder.find(LF) == 0 || this->_remainder.find("\r\n") == 0)
+		{
+			this->_remainder = this->_remainder.substr(this->_remainder.find(LF) + 1, std::string::npos);
+			if (!checkHeaderFields())
+				throw std::runtime_error("Error parsing headers");
+			this->_state = __PARSING_BODY__;
+			break ;
+		}
+		newLine = this->_remainder.substr(0, k);
+		if (newLine.back() == CR)
+			newLine.erase(newLine.length() - 1);
+		if (!this->parseHeaderField(newLine))
+			throw std::runtime_error("Error parsing headers");
+		this->_remainder = this->_remainder.substr(k + 1, std::string::npos);			
+		if (!this->_remainder.empty())
+			k = this->_remainder.find(LF);
+		else
+			break ;
+	}
+}
+
+void	Request::parsingBody(long maxBodySize)
+{
+	size_t		contentLength = -1;
+	std::string	transferEncoding;
+	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
+	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
+	if (itLength != this->_headerField.end())
+	{
+		// Read body message using content-length
+		contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
+		if (this->_bodyMssg.length() + this->_remainder.length() > contentLength)
+		{
+			int	newPos = contentLength - this->_bodyMssg.length();
+			this->_remainder = this->_remainder.substr(newPos,std::string::npos);
+			this->_errorCode = BAD_REQUEST;
+			this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
+			this->_state = __FINISHED__;
+			return ;
+		}
+		if (static_cast<long>(this->_bodyMssg.length() + this->_remainder.length()) > maxBodySize)
+		{
+			int	newPos = maxBodySize - this->_bodyMssg.length();
+			this->_remainder = this->_remainder.substr(newPos,std::string::npos);
+			this->_errorCode = REQUEST_ENTITY_TOO_LARGE;
+			this->_errorMssg = REQUEST_TOO_LARGE_STR;
+			this->_state = __FINISHED__;
+			return ;
+		}
+		this->_bodyMssg += this->_remainder;
+		this->_remainder = "";
+		if (this->_bodyMssg.length() == contentLength)
+		{
+			this->_state = __FINISHED__;
+			return ;
+		}
+	}
+	else if (itEncoding != this->_headerField.end())
+	{
+		
+	}
+	else
+	{
+		this->_state = __FINISHED__;
+	}
 }
 
 /*
@@ -230,67 +212,6 @@ bool	Request::checkHeaderFields(void)
 	}
 	return (true);
 }
-
-/*
-	Check if content-length and transfer-encoding headers exists,
-	reads the body message according to that, if there is no message
-	_bodyMssg is left empty()
-*/
-bool	Request::readBodyMessage(std::string & body)
-{
-	size_t		contentLength = -1;
-	std::string	transferEncoding;
-
-	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
-	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
-
-	if (itLength != this->_headerField.end())
-	{
-		// Read body message using content-length
-		contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
-		if (body.length() == contentLength)
-			this->_bodyMssg = body;
-		else
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
-			return (false);
-		}
-	}
-	else if (itEncoding != this->_headerField.end())
-	{
-		// Read body message using transfer-encoding(chunked)
-		size_t	endSignal = body.find("0\r\n");
-		(void)endSignal;
-		if (body.find("0\r\n") != std::string::npos)
-		{
-			std::vector<std::string>	bodyVec = split_r(body, LF);
-
-			for (std::vector<std::string>::iterator it = bodyVec.begin(); *it != "0\r"; it++)
-			{
-				
-			}
-		}
-		else
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = INVALID_CHUNK_STR;
-			return (false);	
-		}
-	}
-	else
-	{
-		if (!body.empty())
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
-			return (false);
-		}
-	}
-	return (true);
-}
-
-
 
 /*
 	Parse request-line following RFC 9112: 
@@ -387,126 +308,6 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	return (true);
 }
 
-
-/*
-	Parse the request syntax according to HTTP/1.1 as defined in RFC 9112.
-
-	RFC 9112:"The normal procedure for parsing an HTTP message is to read 
-	the start-line into a structure, read each header field line into a hash 
-	table by field name until the empty line, and then use the parsed data to 
-	determine if a message body is expected. If a message body has been 
-	indicated, then it is read as a stream until an amount of octets equal to 
-	the message body length is read or the connection is closed."
-*/
-Request::Request(const char * req)
-{
-	std::string	request(req);
-	std::string	body;
-	
-	// Init request error code to 0
-	this->_errorCode = 0;
-
-	// Remove leading CRLF or LF
-	this->skipLeadingGarbage(request);
-	// Makes sure request is not empty, if it's empty it sets _errorCode to 400
-	if (request.empty())
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = EMPTY_REQUEST_STR;
-		return ;
-	}
-	// Split body message from request-line and headers
-	std::string	opt1 = "\r\n\r\n";
-	std::string	opt2 = "\n\n";
-	size_t	k = request.find(opt1);
-	size_t	l = request.find(opt2);
-
-	if (k < l)
-	{
-		body = request.substr(k + 4, std::string::npos);
-		request = request.substr(0, k);
-	}
-	else if (l < k)
-	{
-		body = request.substr(l + 2, std::string::npos);
-		request = request.substr(0, l);
-	}
-	// Split request in vectors using LF as delimitor
-	std::vector<std::string>	reqSplit = split_r(request, LF);
-	// If last char of each vector is CR we erase it from the chain.
-	// We don't remove it from the body message.
-	for (std::vector<std::string>::iterator it = reqSplit.begin(); it != reqSplit.end(); it++)
-	{
-		std::string &	line = (*it);
-		if (!line.empty() && line.at(line.length() - 1) == CR)
-			line.erase(line.length() - 1);
-	}
-	// Set iterators to split request into request-line and headers
-	// This allows us to generate vectors only containing the info we need on each step
-	std::vector<std::string>::iterator	reqLineIt = reqSplit.begin();
-	std::vector<std::string>::iterator	headerItBegin = reqSplit.begin() + 1;
-	
-	if (headerItBegin == reqSplit.end())
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
-		return ;
-	}
-
-	// Check request-line syntax and save information in class
-	if (!this->parseRequestLine(*reqLineIt))
-		return ;
-	// Parse header fields 
-	//std::vector<std::string> headerFields(headerItBegin, reqSplit.end());
-	//if (!this->parseHeaderFields(headerFields))
-	//	return ;
-	// Check header fields validity
-	if (!this->checkHeaderFields())
-		return ;
-	// Read message and check content-length / transfer-encoding
-	if (!this->readBodyMessage(body))
-		return ;
-}
-
-bool	Request::isValidFieldName(std::string & str)
-{
-	for (size_t i = 0; i < str.length(); i++)
-	{
-		if (!std::isalnum(str.at(i)) && str.at(i) != HYPHEN && str.at(i) != USCORE)
-			return (false);
-	}
-	return (true);
-}
-
-bool	Request::isValidFieldValue(std::string & str)
-{
-	for (size_t i = 0; i < str.length(); i++)
-	{
-		if (!std::isprint(str.at(i)))
-			return (false);
-	}
-	return (true);
-}
-
-// Cleans leading and trailing OWS (space character(32) and horizontal tab(9))
-std::string	Request::cleanOWS(std::string str)
-{
-	std::string	cleanStr;
-
-	if (str.empty())
-		return (str);
-
-	size_t	begin = str.find_first_not_of(" \t");
-	if (begin == std::string::npos)
-		cleanStr = "";
-	else
-	{
-		size_t	end = str.find_last_not_of(" \t");
-		cleanStr = str.substr(begin, end - begin + 1);
-	}
-	return (cleanStr);
-}
-
 Request &	Request::operator=(const Request & other)
 {
 	if (this != &other)
@@ -522,7 +323,6 @@ Request &	Request::operator=(const Request & other)
 	return (*this);
 }
 
-
 requestLine							Request::getRequestLine(void) const { return (this->_requestLine); }
 std::map<std::string, std::string>	Request::getHeaderField(void) const { return (this->_headerField); }
 std::string							Request::getBodyMssg(void) const { return (this->_bodyMssg); }
@@ -534,8 +334,6 @@ int									Request::getErrorCode(void) const { return (this->_errorCode); }
 int									Request::getState(void) const { return (this->_state); }
 std::string							Request::getRemainder(void) const { return(this->_remainder); }
 void								Request::setRemainder(std::string str) { this->_remainder = str; }
-
-
 
 std::ostream	&operator<<(std::ostream &out, const Request &req)
 {
@@ -555,4 +353,3 @@ std::ostream	&operator<<(std::ostream &out, const Request &req)
 	out << "Body: " << body;
 	return (out);
 }
-
