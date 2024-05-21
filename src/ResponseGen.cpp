@@ -78,12 +78,16 @@ Response ResponseGen::DoResponse()
 	std::pair<std::string, std::string> dirLocFile = locFind(loc, _req.getRequestTarget());
 	std::string nameLoc = dirLocFile.first;
 	std::string fileToOpen = dirLocFile.second;
-
 	if (nameLoc.empty())
 		createResponseError(_res, NOT_FOUND, _s.getErrorPage());
 	else
 	{
 		Location loca = loc.find(nameLoc)->second;
+
+		if (loca.checkMethod(_req.getMethod()) == 1)
+		{
+			createResponseError(_res, METHOD_NOT_ALLOWED, _s.getErrorPage(), loca.getErrorPage());
+		}
 		if (!loca.getReturnPag().empty())
 		{
 			_res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
@@ -149,7 +153,7 @@ int ResponseGen::createResponseHtml( std::string fileToOpen, Response &res)
 	if (!file.is_open())
 		return (1);
 	std::string html;
-	std::cout << fileToOpen << std::endl;
+	std::cout << "====================" << fileToOpen << "====================" << std::endl;
 
 	getline(file, html, '\0');
 	file.close();
@@ -229,7 +233,6 @@ std::string ResponseGen::partialFind(std::map<std::string, Location> loc, std::s
 {
 	std::map<std::string, Location>::iterator itLoc = loc.begin();
 
-	(void)reqTarget;
 	for (; itLoc != loc.end(); itLoc++)
 	{
 		int i = comparePratial(itLoc->first, reqTarget);
@@ -267,7 +270,7 @@ void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, R
 
 std::pair<std::string, std::string> ResponseGen::locFind(std::map<std::string, Location> loc, std::string reqTarget)
 {
-	if (reqTarget[reqTarget.size() - 1] == '/')
+	if (reqTarget[reqTarget.size() - 1] == '/' && reqTarget.size() != 1)
 		reqTarget.erase(reqTarget.size() - 1);
 	std::string	test = absolutFind(loc, reqTarget);
 	if (test.empty())
@@ -289,7 +292,6 @@ std::pair<std::string, std::string> ResponseGen::locFind(std::map<std::string, L
 		test = absolutFind(loc, newTarget);
 		if (test.empty())
 			return (std::pair<std::string, std::string>(test, ""));
-		std::cout << test << std::endl;
 		return(std::pair<std::string, std::string>(test, splited[splited.size() - 1]));
 	}
 	return (std::pair<std::string, std::string>(test, ""));

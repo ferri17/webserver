@@ -21,7 +21,7 @@
 //#define	PAYMENT_REQUIRED 402
 //#define	FORBIDDEN 403
 #define	NOT_FOUND 404
-//#define	METHOD_NOT_ALLOWED 405
+#define	METHOD_NOT_ALLOWED 405
 #define	NOT_ACCEPTABLE 406
 //#define	PROXY_AUTHENTICATION_REQUIRED 407
 //#define	REQUEST_TIMEOUT 408
@@ -50,7 +50,8 @@
     ((code) == 500 ? "Internal server error" : \
     ((code) == 501 ? "Not Implemented" : \
     ((code) == 505 ? "HTTP Version Not Supported" : \
-    "Unknown Error")))))))
+    ((code) == 405 ? "Method not allowed" : \
+    "Unknown Error"))))))))
 
 // 400 BAD REQUEST error messages
 #define BAD_REQUEST_STR "Bad request: "
