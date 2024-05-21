@@ -1,7 +1,12 @@
 #include "Request.hpp"
 
-Request::Request(void) : _errorCode(0), _state(__SKIPPING_GRBG__) {};
-Request::~Request(void) {};
+Request::Request(void) : _errorCode(0), _state(__SKIPPING_GRBG__) {}
+Request::~Request(void)
+{
+	std::cout << "hey" << std::endl;
+	this->_headerField.clear();
+	this->_bodyMssg.clear();
+}
 
 /*
 	Parse the request syntax according to HTTP/1.1 as defined in RFC 9112.
@@ -13,11 +18,11 @@ Request::~Request(void) {};
 	indicated, then it is read as a stream until an amount of octets equal to 
 	the message body length is read or the connection is closed."
 */
-void	Request::parseNewBuffer(const char * buffer, long maxBodySize)
+void	Request::parseNewBuffer(const char * buffer, int buffSize, long maxBodySize)
 {
 	try
 	{
-		this->_remainder += buffer;
+		this->pushBackBuffer(buffer, buffSize);
 		if (this->_remainder.empty())
 			return ;
 		if (this->_state == __SKIPPING_GRBG__)
@@ -32,7 +37,7 @@ void	Request::parseNewBuffer(const char * buffer, long maxBodySize)
 	catch(const std::exception& e)
 	{
 		this->_state = __FINISHED__;
-		std::cerr << RED BOLD << "Error parsing:"  << this->getErrorMessage() << NC << std::endl;
+		std::cerr << getTime() << RED BOLD << "Error parsing: "  << this->getErrorMessage() << NC << std::endl;
 	}
 }
 
@@ -94,7 +99,8 @@ void	Request::parsingHeaders(void)
 
 void	Request::parsingBody(long maxBodySize)
 {
-	size_t		contentLength = -1;
+	size_t	i = 0;
+	size_t	contentLength = -1;
 	std::string	transferEncoding;
 	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
 	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
@@ -102,26 +108,18 @@ void	Request::parsingBody(long maxBodySize)
 	{
 		// Read body message using content-length
 		contentLength = std::strtol((*itLength).second.c_str(), NULL, 10);
-		if (this->_bodyMssg.length() + this->_remainder.length() > contentLength)
+		for (i = 0; i < this->_remainder.length() && this->_bodyMssg.length() < contentLength; i++)
 		{
-			int	newPos = contentLength - this->_bodyMssg.length();
-			this->_remainder = this->_remainder.substr(newPos,std::string::npos);
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = WRONG_CONTENT_LENGTH_STR;
-			this->_state = __FINISHED__;
-			return ;
+			this->_bodyMssg.push_back(this->_remainder.at(i));
 		}
-		if (static_cast<long>(this->_bodyMssg.length() + this->_remainder.length()) > maxBodySize)
+		this->_remainder = this->_remainder.substr(i, std::string::npos);
+		if (this->_bodyMssg.length() > static_cast<size_t>(maxBodySize))
 		{
-			int	newPos = maxBodySize - this->_bodyMssg.length();
-			this->_remainder = this->_remainder.substr(newPos,std::string::npos);
 			this->_errorCode = REQUEST_ENTITY_TOO_LARGE;
 			this->_errorMssg = REQUEST_TOO_LARGE_STR;
 			this->_state = __FINISHED__;
-			return ;
+			throw std::runtime_error("Error max client body size");
 		}
-		this->_bodyMssg += this->_remainder;
-		this->_remainder = "";
 		if (this->_bodyMssg.length() == contentLength)
 		{
 			this->_state = __FINISHED__;
@@ -136,176 +134,6 @@ void	Request::parsingBody(long maxBodySize)
 	{
 		this->_state = __FINISHED__;
 	}
-}
-
-/*
-	Cleans and fills header fields/value pairs
-*/
-bool	Request::parseHeaderField(std::string & headerLine)
-{
-		size_t	separator = headerLine.find(COLON);
-		std::string	fieldName;
-		std::string	fieldValue;
-		if (separator == std::string::npos)
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
-			return (false);
-		}
-		else
-		{
-			fieldName = headerLine.substr(0, separator);
-			fieldValue = headerLine.substr(separator + 1, std::string::npos);
-			fieldValue = Request::cleanOWS(fieldValue);
-		}
-		if (!Request::isValidFieldName(fieldName) || !Request::isValidFieldValue(fieldValue))
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
-			return (false);
-		}
-		this->_headerField.insert(std::pair<std::string, std::string>(stringToLower(fieldName), fieldValue));
-	return (true);
-}
-
-/*
-	Check the validity of the header fields found in the request.
-	Headers implemented: content-length, transfer-encoding(chunked) and host.
-*/
-bool	Request::checkHeaderFields(void)
-{
-	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
-	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
-	std::map<std::string, std::string>::iterator	itHost = this->_headerField.find("host");
-
-	// Check host header field
-	if (itHost == this->_headerField.end())
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = HOST_NOT_FOUND_STR;
-		return (false);
-	}
-	// Check content-length and transfer-encoding header field
-	if (itLength != this->_headerField.end() && itEncoding != this->_headerField.end())
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = CONTRADICTORY_HEADERS_STR;
-		return (false);
-	}
-	else if (itLength != this->_headerField.end())
-	{
-		if (!isInt((*itLength).second))
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = INVALID_CONTENT_LENGTH_STR;
-			return (false);
-		}
-	}
-	else if (itEncoding != this->_headerField.end())
-	{
-		if (stringToLower((*itEncoding).second) != "chunked")
-		{
-			this->_errorCode = NOT_IMPLEMENTED;
-			this->_errorMssg = ENCODING_NOT_IMPLEMENTED_STR;
-			return (false);
-		}
-	}
-	return (true);
-}
-
-/*
-	Parse request-line following RFC 9112: 
-	
-	"A request-line begins with a method token, 
-	followed by a single space (SP), the request-target, and another single space (SP), 
-	and ends with the protocol version.
-	
-	request-line   = method SP request-target SP HTTP-version"
-*/
-bool	Request::parseRequestLine(std::string & requestLineStr)
-{
-	// Check basic syntax errors on request-line
-	if (requestLineStr.empty() || requestLineStr.at(requestLineStr.length() - 1) == SP)
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
-		return (false);
-	}
-
-	// Check request-line length against server max length accepted
-	if (requestLineStr.length() > MAX_LEN_REQUEST_LINE)
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = REQLINE_LONG_STR;
-		return (false);
-	}
-
-	// Split request-line in strings separated by SP
-	std::vector<std::string>	requestLineVec = split_r(requestLineStr, SP);
-
-	// Check request-line consists of 3 space separated strings, if not return 400
-	if (requestLineVec.size() != 3)
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
-		return (false);
-	}
-	std::string	method = requestLineVec[0];
-	std::string	reqTarget = requestLineVec[1];
-	std::string	protocol = requestLineVec[2];
-
-	// Check if method token is implemented in the server and return error if needed
-	if (Server::isServerMethod(method))
-		this->_requestLine._method = method;
-	else
-	{
-		size_t	i = 0;
-		while (i < method.length() && isUsAscii(method.at(i)) && !std::isspace(method.at(i)))
-			i++;
-		if (i == method.length())
-		{
-			this->_errorCode = NOT_IMPLEMENTED;
-			this->_errorMssg = METHOD_NOT_IMPLEMENTED_STR;
-		}
-		else
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_METHOD_STR;
-		}
-		return (false);
-	}
-
-	// Check if request-target syntax is valid
-	if (!reqTarget.empty())
-	{
-		size_t	i = 0;
-		while (i < reqTarget.length() && isUsAscii(reqTarget.at(i)) && !std::isspace(reqTarget.at(i)))
-			i++;
-		if (i != reqTarget.length())
-		{
-			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
-			return (false);
-		}
-		this->_requestLine._requestTarget = reqTarget;
-	}
-	else
-	{
-		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
-		return (false);
-	}
-
-	// Check if HTTP-version is correct
-	if (protocol == "HTTP/1.1")
-		this->_requestLine._protocolVersion = protocol;
-	else
-	{
-		this->_errorCode = HTTP_VERSION_NOT_SUPPORTED;
-		this->_errorMssg = HTTP_VERSION_NOT_SUPPORTED_STR;
-		return (false);
-	}
-	return (true);
 }
 
 Request &	Request::operator=(const Request & other)

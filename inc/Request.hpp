@@ -41,6 +41,7 @@ class	Request
 		bool				parseRequestLine(std::string & requestLineStr);
 		bool				checkHeaderFields(void);
 		bool				parseHeaderField(std::string & headerLine);
+		void				pushBackBuffer(const char *buffer, int buffSize);
 
 		void				skippingGarbage(void);
 		void				parsingRequestLine(void);
@@ -52,7 +53,7 @@ class	Request
 		Request &	operator=(const Request & other);
 		~Request(void);
 
-		void								parseNewBuffer(const char * buffer, long maxBodySize);
+		void								parseNewBuffer(const char * buffer, int buffSize, long maxBodySize);
 		requestLine							getRequestLine(void) const;
 		std::string							getMethod(void) const;
 		std::string							getRequestTarget(void) const;
