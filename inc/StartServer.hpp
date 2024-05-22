@@ -16,7 +16,7 @@
 #include "Colors.hpp"
 
 #define MAX_CONNECTION_BACKLOG 10
-#define BUFFER_SIZE 64
+#define BUFFER_SIZE 1024
 #define HTTP_ERROR_START 400
 
 #define TIMER_EV_IDENT 4200000

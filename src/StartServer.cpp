@@ -149,11 +149,12 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::ma
 
 void	readFromSocket(int kq, int clientSocket, std::map<int, mssg> & m, std::vector<socketServ> & sockets)
 {
+	int			bytesRead;
 	char		buffer[BUFFER_SIZE + 1];
 	Request &	currentReq = m[clientSocket].req;
 	Server &	currentServ = getSocketServ(clientSocket, sockets).serv;
 
-	int bytesRead = recv(clientSocket, buffer, BUFFER_SIZE, 0);
+	bytesRead = recv(clientSocket, buffer, BUFFER_SIZE, 0);
 	if (bytesRead <= 0)
 	{
 		disconnectClient(kq, clientSocket, sockets, m);
@@ -185,7 +186,9 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		kevent(kq, evSet, 2, 0, 0, 0);		
 		remainder = m.req.getRemainder();
+		std::cout << "capacity body: " << m.req.getBodyMssg().capacity() << std::endl;
 		m.req = Request();
+		std::cout << "capacity body: " << m.req.getBodyMssg().capacity() << std::endl;
 		m.req.setRemainder(remainder);
 	}
 }
@@ -216,12 +219,12 @@ void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & soc
 {
 	for (std::map<int, mssg>::iterator it = m.begin(); it != m.end(); it++)
 	{
-		std::pair<int, mssg>	currentM = (*it);
+		/* std::pair<int, mssg>	currentM = (*it);
 		currentM.second.timeout += TIMER_LOOP_MS;
 		if (currentM.second.timeout > REQ_TIMEOUT_MS)
 		{
 			
-		}
+		} */
 	}
 	(void)kq;
 	(void)m;

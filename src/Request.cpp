@@ -3,9 +3,10 @@
 Request::Request(void) : _errorCode(0), _state(__SKIPPING_GRBG__) {}
 Request::~Request(void)
 {
-	std::cout << "hey" << std::endl;
-	this->_headerField.clear();
-	this->_bodyMssg.clear();
+	std::cout << "destructor request" << std::endl;
+	std::string().swap(this->_bodyMssg);
+	std::cout << "capa:" << this->_bodyMssg.capacity() << std::endl;
+	std::cout << "size:" << this->_bodyMssg.size() << std::endl;
 }
 
 /*
