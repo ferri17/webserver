@@ -44,6 +44,18 @@ void ResponseGen::genResFile(std::string &fileToOpen, Location loca, std::string
 	}
 }
 
+void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
+{
+	Cgi cgi;
+	std::string cgiText;
+	std::string headerCookie = _req.getHeaderField()["cookie"];
+	std::vector<std::string> cookiesEnv = split(headerCookie, ';');
+	if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
+		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
+	else
+		_res.setCgiResponse(cgiText);
+	done = 1;
+}
 
 void ResponseGen::responsePriority(std::string &fileToOpen, Location loca, std::string nameLoc)
 {
@@ -59,14 +71,7 @@ void ResponseGen::responsePriority(std::string &fileToOpen, Location loca, std::
 	}
 	if (done == 0 && fileExist && !loca.getCgi().empty() && cgi.validExtension(fileToOpen, loca.getCgi()))
 	{
-		std::string cgiText;
-		std::string headerCookie = _req.getHeaderField()["cookie"];
-		std::vector<std::string> cookiesEnv = split(headerCookie, ';');
-		if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
-			createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
-		else
-			_res.setCgiResponse(cgiText);
-		done = 1;
+		requestCgi(loca, fileToOpen);
 	}
 	if (done == 0)
 		selectTypeOfResponse(_res, _s, loca, _req, fileToOpen);
@@ -85,13 +90,19 @@ Response ResponseGen::DoResponse()
 		Location loca = loc.find(nameLoc)->second;
 
 		if (loca.checkMethod(_req.getMethod()) == 1)
-		{
 			createResponseError(_res, METHOD_NOT_ALLOWED, _s.getErrorPage(), loca.getErrorPage());
-		}
 		if (!loca.getReturnPag().empty())
 		{
 			_res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
 			_res.addHeaderField(std::pair<std::string, std::string>(LOCATION, loca.getReturnPag()));
+		}
+		else if (_req.getMethod() == "POST")
+		{
+			requestCgi(loca, fileToOpen);
+		}
+		else if (_req.getMethod() == "DELETE")
+		{
+			
 		}
 		else
 		{
