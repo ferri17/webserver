@@ -414,8 +414,14 @@ bool Input::checkFormat( std::vector<Server> &servers )
 		{
 			key_open = false;
 			correct = true;
+			if (s.getRoot().empty())
+				throw std::invalid_argument("Missing Root, IS OBLIGATORY!");
 			if (s.getClientMaxBodySize() == -1)
 				s.setClientMaxBodySize(10000);
+			if (s.getListen().empty())
+				s.setDefLis();
+			if (s.getLocations().empty())
+				s.setDefLoc();
 			s.preparePages();
 			servers.push_back(s);
 			s.clean();

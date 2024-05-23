@@ -10,10 +10,25 @@ void Server::initDef(void)
 {
 	_listen.push_back((t_listen){ "", 4242});
 	_server_name.push_back("default.com");
-	_client_max_body_size = 1024;
+	_client_max_body_size = 10000;
 	_root = "./html";
 	_upload_store = "/tmp";
 	_error_page.insert(std::pair<int, std::string>(4242, "./html/error.html"));
+	setDefLoc();
+}
+
+void Server::setDefLis(void)
+{
+	_listen.push_back((t_listen){ "", 4242});
+}
+
+void Server::setDefLoc(void)
+{
+	Location loca;
+
+	loca.setAutoindex(1);
+	loca.setClose(true);
+	_locations.insert(std::pair<std::string, Location>("/", loca));
 }
 
 void Server::preparePages( void )

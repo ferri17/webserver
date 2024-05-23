@@ -22,6 +22,7 @@ int main(int ac, char **av)
 			Server def;
 
 			def.initDef();
+			def.preparePages();
 			s.push_back(def);
 		}
 		else

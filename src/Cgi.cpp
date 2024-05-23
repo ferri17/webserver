@@ -71,6 +71,7 @@ char **Cgi::generateEnv(std::vector<std::string> cookies)
 	return (env);
 }
 
+// MISSING CONTROL TIMEOUT
 int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, std::vector<std::string> cookies)
 {
 	int pipefd[2];
