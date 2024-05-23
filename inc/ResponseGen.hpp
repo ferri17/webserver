@@ -17,6 +17,8 @@ class ResponseGen
 		Server _s;
 		int done;
 		void genResFile(std::string &fileToOpen, Location loca, std::string nameLoc);
+		void deleteMethod(Location loca, std::string fileToOpen);
+		void responseHtmlOkey();
 		void requestCgi(Location loca, std::string fileToOpen);
 		void responsePriority(std::string &fileToOpen, Location loca, std::string nameLoc);
 		int createResponseImage( std::string fileToOpen, Response &res);

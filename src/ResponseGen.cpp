@@ -1,5 +1,6 @@
 
 #include "ResponseGen.hpp"
+#include <cstdio>
 
 ResponseGen::ResponseGen(Request &req, Server s): _req(req)
 {
@@ -53,8 +54,20 @@ void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
 	if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
 		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
 	else
+	{
 		_res.setCgiResponse(cgiText);
+	}
 	done = 1;
+}
+
+void ResponseGen::responseHtmlOkey()
+{
+	std::string body;
+
+	_res.setStatusLine((statusLine){"HTTP/1.1", 200, "OK"});
+	body = "<h1>File Deleted Successfully</h1>";
+	_res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(body.size())));
+	_res.setBody(body);
 }
 
 void ResponseGen::responsePriority(std::string &fileToOpen, Location loca, std::string nameLoc)
@@ -77,8 +90,23 @@ void ResponseGen::responsePriority(std::string &fileToOpen, Location loca, std::
 		selectTypeOfResponse(_res, _s, loca, _req, fileToOpen);
 }
 
+void ResponseGen::deleteMethod(Location loca, std::string fileToOpen)
+{
+	std::cout << loca.getRoot() << "/" << fileToOpen << std::endl;
+	if (std::remove((loca.getRoot() + "/" + fileToOpen).c_str()) != 0)
+		createResponseError(_res, NO_CONTENT, _s.getErrorPage(), loca.getErrorPage());
+	else
+		responseHtmlOkey();
+}
+
 Response ResponseGen::DoResponse()
 {
+	if (_req.getErrorCode() != 0)
+	{
+		createResponseError(_res, _req.getErrorCode(), _s.getErrorPage());
+		return (_res);
+	}
+
 	std::map<std::string, Location> loc = _s.getLocations();
 	std::pair<std::string, std::string> dirLocFile = locFind(loc, _req.getRequestTarget());
 	std::string nameLoc = dirLocFile.first;
@@ -97,17 +125,11 @@ Response ResponseGen::DoResponse()
 			_res.addHeaderField(std::pair<std::string, std::string>(LOCATION, loca.getReturnPag()));
 		}
 		else if (_req.getMethod() == "POST")
-		{
 			requestCgi(loca, fileToOpen);
-		}
 		else if (_req.getMethod() == "DELETE")
-		{
-			
-		}
+			deleteMethod(loca, fileToOpen);
 		else
-		{
 			responsePriority(fileToOpen, loca, fileToOpen);
-		}
 	}
 	return (_res);
 }
@@ -164,7 +186,6 @@ int ResponseGen::createResponseHtml( std::string fileToOpen, Response &res)
 	if (!file.is_open())
 		return (1);
 	std::string html;
-	std::cout << "====================" << fileToOpen << "====================" << std::endl;
 
 	getline(file, html, '\0');
 	file.close();
@@ -264,7 +285,6 @@ std::string ResponseGen::absolutFind(std::map<std::string, Location> loc, std::s
 void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, Request req, std::string fileToOpen)
 {
 	int type = accpetType(req);
-	std::cout << "_________________" << fileToOpen << "_________________"<< std::endl;
 	if (type == 1)
 	{
 		if (createResponseHtml(fileToOpen, res))
