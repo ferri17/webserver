@@ -101,7 +101,10 @@ int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string 
         char buffer[1024];
         ssize_t bytes_read;
         while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
+		{
+			std::cout << buffer << std::endl;
             ss.write(buffer, bytes_read);
+		}
         close(pipefd[0]);
         int status;
         waitpid(pid, &status, 0);

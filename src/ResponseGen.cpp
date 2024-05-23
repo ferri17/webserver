@@ -49,8 +49,10 @@ void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
 {
 	Cgi cgi;
 	std::string cgiText;
+	std::vector<std::string> cookiesEnv;
 	std::string headerCookie = _req.getHeaderField()["cookie"];
-	std::vector<std::string> cookiesEnv = split(headerCookie, ';');
+	if (!headerCookie.empty())
+		cookiesEnv = split(headerCookie, ';');
 	if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
 		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
 	else
@@ -58,6 +60,29 @@ void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
 		_res.setCgiResponse(cgiText);
 	}
 	done = 1;
+}
+
+void ResponseGen::requestCgiPost(Location loca, std::string fileToOpen)
+{
+	Cgi cgi;
+	std::string cgiText;
+
+	fileToOpen = loca.getRoot() + "/" + fileToOpen;
+
+	std::vector<std::string> cookiesEnv;
+	std::string body = _req.getBodyMssg();
+	std::string file = "file=" + body;
+	std::string upload = "upload_store=" + loca.getUploadStore();
+	std::cout << upload << std::endl;
+	std::string headerCookie = _req.getHeaderField()["cookie"];
+	if (!headerCookie.empty())
+		cookiesEnv = split(headerCookie, ';');
+	cookiesEnv.push_back(file);
+	cookiesEnv.push_back(upload);
+	if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
+		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
+	else
+		_res.setCgiResponse(cgiText);
 }
 
 void ResponseGen::responseHtmlOkey()
@@ -132,13 +157,15 @@ Response ResponseGen::DoResponse()
 
 		if (loca.checkMethod(_req.getMethod()) == 1)
 			createResponseError(_res, METHOD_NOT_ALLOWED, _s.getErrorPage(), loca.getErrorPage());
-		if (!loca.getReturnPag().empty())
+		else if (!loca.getReturnPag().empty())
 		{
 			_res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
 			_res.addHeaderField(std::pair<std::string, std::string>(LOCATION, loca.getReturnPag()));
 		}
-		else if (_req.getMethod() == "POST")
-			requestCgi(loca, fileToOpen);
+		else if (_req.getMethod() == "POST" && !fileToOpen.empty())
+		{
+			requestCgiPost(loca, fileToOpen);
+		}
 		else if (_req.getMethod() == "DELETE")
 			deleteMethod(loca, fileToOpen);
 		else
@@ -278,27 +305,6 @@ int ResponseGen::comparePratial(std::string src, std::string find)
 	return (i);
 }
 
-std::string ResponseGen::partialFind(std::map<std::string, Location> loc, std::string reqTarget)
-{
-	std::map<std::string, Location>::iterator itLoc = loc.begin();
-
-	for (; itLoc != loc.end(); itLoc++)
-	{
-		int i = comparePratial(itLoc->first, reqTarget);
-		if (itLoc->first[i] == '/')
-			return (itLoc->first);
-	}
-	return ("");
-}
-
-std::string ResponseGen::absolutFind(std::map<std::string, Location> loc, std::string reqTarget)
-{
-	std::map<std::string, Location>::iterator itLoc = loc.find(reqTarget);
-	if (itLoc == loc.end())
-		return ("");
-	return (itLoc->first);
-}
-
 void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, Request req, std::string fileToOpen)
 {
 	int type = accpetType(req);
@@ -314,6 +320,27 @@ void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, R
 	}
 	else
 		createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
+}
+
+std::string ResponseGen::partialFind(std::map<std::string, Location> loc, std::string reqTarget)
+{
+	std::map<std::string, Location>::iterator itLoc = loc.begin();
+
+	for (; itLoc != loc.end(); itLoc++)
+	{
+		int i = comparePratial(itLoc->first, reqTarget);
+		if (itLoc->first[i] == '/' && reqTarget[i] == '\0')
+			return (itLoc->first);
+	}
+	return ("");
+}
+
+std::string ResponseGen::absolutFind(std::map<std::string, Location> loc, std::string reqTarget)
+{
+	std::map<std::string, Location>::iterator itLoc = loc.find(reqTarget);
+	if (itLoc == loc.end())
+		return ("");
+	return (itLoc->first);
 }
 
 std::pair<std::string, std::string> ResponseGen::locFind(std::map<std::string, Location> loc, std::string reqTarget)

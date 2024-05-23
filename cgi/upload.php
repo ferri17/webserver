@@ -1,36 +1,46 @@
 <?php
 $headers = "";
 $body = "";
-$upload_dir = $_ENV['upload_store'];
+$upload_dir = getenv('upload_store');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['file'])) {
-    $file = $_FILES['file'];
+if (isset($_ENV['file']))
+{
+    $file = $_ENV['file'];
     
-    if ($file['error'] === UPLOAD_ERR_OK) {
-        $filename = basename($file['name']);
-        $target_file = $upload_dir . '/' . $filename;
-        
-        if (move_uploaded_file($file['tmp_name'], $target_file)) {
-            $body = "<h1>Archivo '{$filename}' subido exitosamente</h1>";
-            $cookie_value = "success";
+    $filename = "PEPITO.jpeg";
+    $target_file = $upload_dir . '/' . $filename;
+    
+    // Verificar si el directorio de subida es válido
+    if (is_dir($upload_dir)) {
+        // Asegurarse de que el archivo no existe antes de abrir con 'x'
+        if (!file_exists($target_file)) {
+            $fop = fopen($target_file, 'x');
+            if ($fop) {
+                // Leer el contenido temporal del archivo subido
+                $temp_file = $file['tmp_name'];
+                $file_contents = file_get_contents($temp_file);
+                
+                // Escribir el contenido en el archivo de destino
+                fwrite($fop, $file_contents);
+                fclose($fop);
+                $body = "El archivo se ha escrito correctamente.";
+            } else {
+                $body = "<h1>Error al subir el archivo</h1>";
+            }
         } else {
-            $body = "<h1>Error al subir el archivo</h1>";
-            $cookie_value = "failure";
+            $body = "<h1>El archivo ya existe</h1>";
         }
     } else {
-        $body = "<h1>Error al subir el archivo</h1>";
-        $cookie_value = "failure";
+        $body = "<h1>Directorio de subida no válido</h1>";
     }
 } else {
     $body = "<h1>No se ha enviado ningún archivo</h1>";
-    $cookie_value = "no_file";
 }
 
-$headers = $headers . "HTTP/1.1 200 OK\r\n";
-$headers = $headers . "Content-Type:text/html\r\n";
-$headers = $headers . "Content-Length:" . strlen($body) . "\r\n";
-$headers = $headers . "\r\n";
-$headers = $headers . $body;
+// Usar la función header() para enviar cabeceras HTTP
+header("HTTP/1.1 200 OK");
+header("Content-Type: text/html");
+header("Content-Length: " . strlen($body));
 
-echo $headers;
+echo $body;
 ?>
