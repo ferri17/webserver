@@ -69,6 +69,7 @@
 #define HOST_NOT_FOUND_STR BAD_REQUEST_STR "Host header not found."
 #define CONTRADICTORY_HEADERS_STR BAD_REQUEST_STR "Content-length and transfer-encoding header found."
 #define INVALID_CHUNK_STR BAD_REQUEST_STR "Invalid chunked message."
+#define TIMEOUT_STR BAD_REQUEST_STR "Request timeout."
 
 // 413 REQUEST ENTITY TOO LARGE error messages
 #define REQUEST_TOO_LARGE_STR "Request entity too large: Client max body size exceeded"
