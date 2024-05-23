@@ -1,13 +1,7 @@
 #include "Request.hpp"
 
-Request::Request(void) : _errorCode(0), _state(__SKIPPING_GRBG__) {}
-Request::~Request(void)
-{
-	std::cout << "destructor request" << std::endl;
-	std::string().swap(this->_bodyMssg);
-	std::cout << "capa:" << this->_bodyMssg.capacity() << std::endl;
-	std::cout << "size:" << this->_bodyMssg.size() << std::endl;
-}
+Request::Request(void) : _errorCode(0), _state(__SKIPPING_GRBG__), _timeout(-1) {}
+Request::~Request(void) {}
 
 /*
 	Parse the request syntax according to HTTP/1.1 as defined in RFC 9112.
@@ -23,6 +17,8 @@ void	Request::parseNewBuffer(const char * buffer, int buffSize, long maxBodySize
 {
 	try
 	{
+		if (this->_timeout == -1)
+			this->_timeout = 0;
 		this->pushBackBuffer(buffer, buffSize);
 		if (this->_remainder.empty())
 			return ;
@@ -38,7 +34,7 @@ void	Request::parseNewBuffer(const char * buffer, int buffSize, long maxBodySize
 	catch(const std::exception& e)
 	{
 		this->_state = __FINISHED__;
-		std::cerr << getTime() << RED BOLD << "Error parsing: "  << this->getErrorMessage() << NC << std::endl;
+		std::cerr << getTime() << RED BOLD << "Error parsing: "  << ERROR_MESSAGE(_errorCode) << NC << std::endl;
 	}
 }
 
@@ -117,7 +113,7 @@ void	Request::parsingBody(long maxBodySize)
 		if (this->_bodyMssg.length() > static_cast<size_t>(maxBodySize))
 		{
 			this->_errorCode = REQUEST_ENTITY_TOO_LARGE;
-			this->_errorMssg = REQUEST_TOO_LARGE_STR;
+			//this->_errorMssg = REQUEST_TOO_LARGE_STR;
 			this->_state = __FINISHED__;
 			throw std::runtime_error("Error max client body size");
 		}
@@ -145,7 +141,7 @@ Request &	Request::operator=(const Request & other)
 		this->_headerField = other._headerField;
 		this->_bodyMssg = other._bodyMssg;
 		this->_errorCode = other._errorCode;
-		this->_errorMssg = other._errorMssg;
+		//this->_errorMssg = other._errorMssg;
 		this->_remainder = other._remainder;
 		this->_state = other._state;
 	}
@@ -158,11 +154,15 @@ std::string							Request::getBodyMssg(void) const { return (this->_bodyMssg); }
 std::string							Request::getMethod(void) const { return (this->_requestLine._method); }
 std::string							Request::getRequestTarget(void) const { return (this->_requestLine._requestTarget); }
 std::string							Request::getProtocolVersion(void) const { return (this->_requestLine._protocolVersion); }
-std::string							Request::getErrorMessage(void) const { return (this->_errorMssg); }
 int									Request::getErrorCode(void) const { return (this->_errorCode); }
 int									Request::getState(void) const { return (this->_state); }
 std::string							Request::getRemainder(void) const { return(this->_remainder); }
 void								Request::setRemainder(std::string str) { this->_remainder = str; }
+void								Request::setErrorCode(int err) { this->_errorCode = err; }
+ssize_t								Request::getTimeout(void) const { return (this->_timeout); }
+void								Request::setTimeout(size_t time) { this->_timeout = time; }
+void								Request::addTimeout(size_t time) { this->_timeout += time; }
+
 
 std::ostream	&operator<<(std::ostream &out, const Request &req)
 {

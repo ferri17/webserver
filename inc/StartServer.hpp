@@ -33,7 +33,6 @@ typedef struct socketServ {
 typedef struct mssg {
 	Request		req;
 	std::string	res;
-	size_t		timeout;
 	bool		closeOnEnd;
 } mssg;
 
@@ -46,5 +45,5 @@ socketServ &			getSocketServ(int targetFd, std::vector<socketServ> & sockets);
 void					cleanServer(int kq, std::vector<socketServ> & sockets);
 void					disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::map<int, mssg> & mssg);
 void					readFromSocket(int kq, int clientSocket, std::map<int, mssg> & mssg, std::vector<socketServ> & sockets);
-void					manageRequestState(mssg & message, int clientSocket, int kq, std::vector<socketServ> & sockets);
+void					manageRequestState(std::map<int, mssg> & m, int clientSocket, int kq, std::vector<socketServ> & sockets);
 void					manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets, std::map<int, mssg> & m);

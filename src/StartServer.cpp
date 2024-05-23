@@ -104,7 +104,11 @@ void	addNewClient(int kq, int targetSock, std::vector<socketServ> & sockets)
 		socketServ & tmpServ = getSocketServ(targetSock, sockets);
 		tmpServ.clientSock.push_back(newClient);
 		EV_SET(&evSet, newClient, EVFILT_READ, EV_ADD, 0, 0, NULL);
-		kevent(kq, &evSet, 1, NULL, 0, NULL);
+		if (kevent(kq, &evSet, 1, NULL, 0, NULL) < 0)
+		{
+			cleanServer(kq, sockets);
+			throw std::runtime_error(strerror(errno));
+		}
 		std::cout << getTime() << GREEN BOLD "Client #" << newClient << " connected" NC << std::endl;
 	}
 }
@@ -141,9 +145,13 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::ma
 		}
 	}
 	m.erase(fd);
-	EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, NULL ,0, NULL);
-	kevent(kq, &evSet, 1, NULL, 0, NULL);
 	close(fd);
+	EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, NULL ,0, NULL);
+	if (kevent(kq, &evSet, 1, NULL, 0, NULL) < 0)
+	{
+		cleanServer(kq, sockets);
+		throw std::runtime_error(strerror(errno));
+	}
 	std::cout << getTime() << PURPLE BOLD "Client #" << fd << " disconnected" NC << std::endl;
 }
 
@@ -169,13 +177,13 @@ void	readFromSocket(int kq, int clientSocket, std::map<int, mssg> & m, std::vect
 
 void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketServ> & sockets)
 {
-	std::string	remainder;
 	struct kevent	evSet[2];
 
 	if (m.req.getState() == __FINISHED__)
 	{
-		/* std::ofstream outfile("test_img.mov", std::ios::binary);
+		/* std::ofstream outfile("test_img.png", std::ios::binary);
 		outfile.write(m.req.getBodyMssg().data(), m.req.getBodyMssg().size()); */
+		m.req.setTimeout(-1);
 		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv);
 		if (m.req.getErrorCode() >= HTTP_ERROR_START)
 			m.closeOnEnd = true;
@@ -184,51 +192,67 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 		m.res = res.DoResponse().generateResponse();
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
-		kevent(kq, evSet, 2, 0, 0, 0);		
-		remainder = m.req.getRemainder();
-		std::cout << "capacity body: " << m.req.getBodyMssg().capacity() << std::endl;
-		m.req = Request();
-		std::cout << "capacity body: " << m.req.getBodyMssg().capacity() << std::endl;
-		m.req.setRemainder(remainder);
+		if (kevent(kq, evSet, 2, 0, 0, 0) < 0)
+		{
+			cleanServer(kq, sockets);
+			throw std::runtime_error(strerror(errno));
+		}
 	}
 }
 
 void	manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets, std::map<int, mssg> & m)
 {
+	int				bytesSent;
 	mssg &			message = m[clientSocket];
 	std::string		buff;
 	struct kevent	evSet[2];
 
 	buff = message.res.substr(0, BUFFER_SIZE);
-	message.res = message.res.substr(buff.size(), std::string::npos);
 	std::cout << getTime() << YELLOW BOLD "Sending data to client #" << clientSocket << "..." << NC << std::endl;
-	send(clientSocket, buff.data(), buff.size(), 0);
+	if ((bytesSent = send(clientSocket, buff.data(), buff.size(), 0)) < 0)
+		std::cerr << RED BOLD << strerror(errno) << NC << std::endl;
+	else
+		message.res = message.res.substr(bytesSent, std::string::npos);
 	if (message.res.empty())
 	{
+		std::string		tmpRemainder = message.req.getRemainder();
+
 		std::cout << getTime() << GREEN BOLD "Request served successfully to client #" << clientSocket << NC << std::endl;
 		EV_SET(&evSet[0], clientSocket, EVFILT_WRITE, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_READ, EV_ADD, 0, 0, 0);
-		kevent(kq, evSet, 2, 0, 0, 0);
-		message.res.clear();
+		if (kevent(kq, evSet, 2, 0, 0, 0) < 0)
+		{
+			cleanServer(kq, sockets);
+			throw std::runtime_error(strerror(errno));
+		}
 		if (message.closeOnEnd)
 			disconnectClient(kq, clientSocket, sockets, m);
+		m.erase(clientSocket);
+		m[clientSocket].req.setRemainder(tmpRemainder);
 	}
 }
 
 void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & sockets)
 {
+	struct kevent	evSet[2];
+
 	for (std::map<int, mssg>::iterator it = m.begin(); it != m.end(); it++)
 	{
-		/* std::pair<int, mssg>	currentM = (*it);
-		currentM.second.timeout += TIMER_LOOP_MS;
-		if (currentM.second.timeout > REQ_TIMEOUT_MS)
+		if ((*it).second.req.getTimeout() >= 0)
+			(*it).second.req.addTimeout(TIMER_LOOP_MS);
+		if ((*it).second.req.getTimeout() >= REQ_TIMEOUT_MS)
 		{
-			
-		} */
+			(*it).second.req.setTimeout(-1);
+			EV_SET(&evSet[0], (*it).first, EVFILT_READ, EV_DELETE, 0, 0, 0);
+			EV_SET(&evSet[1], (*it).first, EVFILT_WRITE, EV_ADD, 0, 0, 0);
+			if (kevent(kq, evSet, 2, 0, 0, 0) < 0)
+			{
+				cleanServer(kq, sockets);
+				throw std::runtime_error(strerror(errno));
+			}
+			m[(*it).first].req.setErrorCode(REQUEST_TIMEOUT);
+		}
 	}
-	(void)kq;
-	(void)m;
-	(void)sockets;
 }
 
 
@@ -242,8 +266,8 @@ void	runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size)
 	{
 		if ((nbEvents = kevent(kq, NULL, 0, evList.data(), size, NULL)) < 0)
 		{
-			std::cerr << RED BOLD << strerror(errno) << NC << std::endl;
-			break ;
+			cleanServer(kq, sockets);
+			throw std::runtime_error(strerror(errno));
 		}
 		for (int i = 0; i < nbEvents; i++)
 		{
@@ -278,7 +302,7 @@ void startServers(std::vector<Server> & s)
 	sockets = initSockets(s);
 	if ((kq = kqueue()) == -1)
 	{
-		throw std::runtime_error("Error creating kqueue()");
+		throw std::runtime_error(strerror(errno));
 	}
 	for (std::vector<socketServ>::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
 	{
@@ -287,11 +311,12 @@ void startServers(std::vector<Server> & s)
 		EV_SET(&sEvent, (*itS).servSock, EVFILT_READ, EV_ADD, 0, 0, 0);
 		evSet.push_back(sEvent);
 	}
-	EV_SET(&tEvent, TIMER_EV_IDENT, EVFILT_TIMER, EV_ADD | EV_ENABLE, 0, TIMER_LOOP_MS, 0);
+	EV_SET(&tEvent, TIMER_EV_IDENT, EVFILT_TIMER, EV_ADD, 0, TIMER_LOOP_MS, 0);
 	evSet.push_back(tEvent);
 	if (kevent(kq, evSet.data(), evSet.size(), NULL, 0, NULL) == -1)
 	{
-		throw std::runtime_error("Error calling kevent()");
+		cleanServer(kq, sockets);
+		throw std::runtime_error(strerror(errno));
 	}
 	runEventLoop(kq, sockets, evSet.size());
 }

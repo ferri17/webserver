@@ -28,9 +28,9 @@ class	Request
 		std::map<std::string, std::string>	_headerField;
 		std::string							_bodyMssg;
 		int									_errorCode;
-		std::string							_errorMssg;
 		std::string							_remainder;
 		int									_state;
+		ssize_t								_timeout;
 
 		static bool			isValidFieldName(std::string & str);
 		static bool			isValidFieldValue(std::string & str);
@@ -47,7 +47,6 @@ class	Request
 		void				parsingRequestLine(void);
 		void				parsingHeaders(void);
 		void				parsingBody(long maxBodySize);
-		//bool				readBodyMessage(std::string & body);
 	public:
 		Request(void);
 		Request &	operator=(const Request & other);
@@ -62,9 +61,12 @@ class	Request
 		std::string							getBodyMssg(void) const;
 		std::string							getRemainder(void) const;
 		void								setRemainder(std::string str);
-		std::string							getErrorMessage(void) const;
 		int									getErrorCode(void) const;
+		void								setErrorCode(int err);
 		int									getState(void) const;
+		ssize_t								getTimeout(void) const;
+		void								setTimeout(size_t time);
+		void								addTimeout(size_t time);
 
 };
 

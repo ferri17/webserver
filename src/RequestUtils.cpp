@@ -93,7 +93,7 @@ bool	Request::parseHeaderField(std::string & headerLine)
 		if (separator == std::string::npos)
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
+			//this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
 			return (false);
 		}
 		else
@@ -105,7 +105,7 @@ bool	Request::parseHeaderField(std::string & headerLine)
 		if (!Request::isValidFieldName(fieldName) || !Request::isValidFieldValue(fieldValue))
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
+			//this->_errorMssg = SYNTAX_ERROR_HEADER_STR;
 			return (false);
 		}
 		this->_headerField.insert(std::pair<std::string, std::string>(stringToLower(fieldName), fieldValue));
@@ -126,14 +126,14 @@ bool	Request::checkHeaderFields(void)
 	if (itHost == this->_headerField.end())
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = HOST_NOT_FOUND_STR;
+		//this->_errorMssg = HOST_NOT_FOUND_STR;
 		return (false);
 	}
 	// Check content-length and transfer-encoding header field
 	if (itLength != this->_headerField.end() && itEncoding != this->_headerField.end())
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = CONTRADICTORY_HEADERS_STR;
+		//this->_errorMssg = CONTRADICTORY_HEADERS_STR;
 		return (false);
 	}
 	else if (itLength != this->_headerField.end())
@@ -141,7 +141,7 @@ bool	Request::checkHeaderFields(void)
 		if (!isInt((*itLength).second))
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = INVALID_CONTENT_LENGTH_STR;
+			//this->_errorMssg = INVALID_CONTENT_LENGTH_STR;
 			return (false);
 		}
 	}
@@ -150,7 +150,7 @@ bool	Request::checkHeaderFields(void)
 		if (stringToLower((*itEncoding).second) != "chunked")
 		{
 			this->_errorCode = NOT_IMPLEMENTED;
-			this->_errorMssg = ENCODING_NOT_IMPLEMENTED_STR;
+			//this->_errorMssg = ENCODING_NOT_IMPLEMENTED_STR;
 			return (false);
 		}
 	}
@@ -172,7 +172,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	if (requestLineStr.empty() || requestLineStr.at(requestLineStr.length() - 1) == SP)
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
+		//this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
 		return (false);
 	}
 
@@ -180,7 +180,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	if (requestLineStr.length() > MAX_LEN_REQUEST_LINE)
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = REQLINE_LONG_STR;
+		//this->_errorMssg = REQLINE_LONG_STR;
 		return (false);
 	}
 
@@ -191,7 +191,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	if (requestLineVec.size() != 3)
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
+		//this->_errorMssg = SYNTAX_ERROR_REQLINE_STR;
 		return (false);
 	}
 	std::string	method = requestLineVec[0];
@@ -209,12 +209,12 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 		if (i == method.length())
 		{
 			this->_errorCode = NOT_IMPLEMENTED;
-			this->_errorMssg = METHOD_NOT_IMPLEMENTED_STR;
+			//this->_errorMssg = METHOD_NOT_IMPLEMENTED_STR;
 		}
 		else
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_METHOD_STR;
+			//this->_errorMssg = SYNTAX_ERROR_METHOD_STR;
 		}
 		return (false);
 	}
@@ -228,7 +228,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 		if (i != reqTarget.length())
 		{
 			this->_errorCode = BAD_REQUEST;
-			this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
+			//this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
 			return (false);
 		}
 		this->_requestLine._requestTarget = reqTarget;
@@ -236,7 +236,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	else
 	{
 		this->_errorCode = BAD_REQUEST;
-		this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
+		//this->_errorMssg = SYNTAX_ERROR_REQTARGET_STR;
 		return (false);
 	}
 
@@ -246,7 +246,7 @@ bool	Request::parseRequestLine(std::string & requestLineStr)
 	else
 	{
 		this->_errorCode = HTTP_VERSION_NOT_SUPPORTED;
-		this->_errorMssg = HTTP_VERSION_NOT_SUPPORTED_STR;
+		//this->_errorMssg = HTTP_VERSION_NOT_SUPPORTED_STR;
 		return (false);
 	}
 	return (true);
