@@ -32,7 +32,9 @@ class Server
 	public:
 		Server( void );
 		void initDef( void );
+		void setDefLis(void);
 		void preparePages( void );
+		void setDefLoc(void);
 		//GET & SET
 		std::vector<t_listen> getListen() const;
 		std::vector<std::string> getServerName() const;

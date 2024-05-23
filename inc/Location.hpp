@@ -25,6 +25,7 @@ class Location
 	public:
 		Location( void );
 		~Location( void );
+		int checkMethod( std::string meth);
 		void preparePages( std::string rootServ);
 		void setAutoindex(int autoindex);
 		void setErrorPage(const std::map<int, std::string> &error_page);

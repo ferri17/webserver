@@ -37,6 +37,7 @@ Response &	Response::operator=(const Response & other)
 		this->_statusLine = other._statusLine;
 		this->_headerField = other._headerField;
 		this->_bodyMssg = other._bodyMssg;
+		this->_cgiResponse = other._cgiResponse;
 	}
 	return (*this);
 }

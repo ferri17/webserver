@@ -27,6 +27,19 @@ void Location::preparePages( std::string rootServ)
 	}
 }
 
+int Location::checkMethod( std::string meth )
+{
+	if (_allow_methods.empty())
+		return (0);
+	for (size_t i = 0; i < _allow_methods.size(); i++)
+	{
+		if (_allow_methods[i] == meth)
+			return (0);
+	}
+	return (1);
+}
+
+
 void Location::setAutoindex(int autoindex) { _autoindex = autoindex; }
 void Location::setErrorPage(const std::map<int, std::string> &error_page) { _error_page = error_page; }
 void Location::setCgi(const t_cgi_type cgi) { _cgi.push_back(cgi); }

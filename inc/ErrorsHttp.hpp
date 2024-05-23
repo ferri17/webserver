@@ -6,7 +6,7 @@
 //#define	CREATED 201
 //#define	ACCEPTED 202
 //#define	NON_AUTHORITATIVE_INFORMATION 203
-//#define	NO_CONTENT 204
+#define	NO_CONTENT 204
 //#define	RESET_CONTENT 205
 //#define	PARTIAL_CONTENT 206
 //#define	MULTIPLE_CHOICES 300
@@ -21,10 +21,10 @@
 //#define	PAYMENT_REQUIRED 402
 //#define	FORBIDDEN 403
 #define	NOT_FOUND 404
-//#define	METHOD_NOT_ALLOWED 405
+#define	METHOD_NOT_ALLOWED 405
 #define	NOT_ACCEPTABLE 406
 //#define	PROXY_AUTHENTICATION_REQUIRED 407
-//#define	REQUEST_TIMEOUT 408
+#define	REQUEST_TIMEOUT 408
 //#define	CONFLICT 409
 //#define	GONE 410
 //#define	LENGTH_REQUIRED 411
@@ -43,14 +43,18 @@
 
 // Macro to find de correct msg
 #define ERROR_MESSAGE(code) \
+    ((code) == 204 ? "No Content" : \
 	((code) == 302 ? "Found" : \
     ((code) == 400 ? "Bad Request" : \
     ((code) == 404 ? "Not Found" : \
+    ((code) == 405 ? "Method not allowed" : \
     ((code) == 406 ? "Not Acceptable" : \
+    ((code) == 408 ? "Request Timeout" : \
+    ((code) == 413 ? "Request enntity too large" : \
     ((code) == 500 ? "Internal server error" : \
     ((code) == 501 ? "Not Implemented" : \
     ((code) == 505 ? "HTTP Version Not Supported" : \
-    "Unknown Error")))))))
+    "Unknown Error")))))))))))
 
 // 400 BAD REQUEST error messages
 #define BAD_REQUEST_STR "Bad request: "
