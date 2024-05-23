@@ -251,6 +251,7 @@ void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & soc
 				throw std::runtime_error(strerror(errno));
 			}
 			m[(*it).first].req.setErrorCode(REQUEST_TIMEOUT);
+			exit(1);
 		}
 	}
 }

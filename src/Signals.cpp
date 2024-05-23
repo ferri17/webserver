@@ -4,6 +4,6 @@
 
 void sigHandler(int sig)
 {
-	(void) sig;
-	signaled = false;
+	if (sig == SIGINT)
+		signaled = false;
 }
