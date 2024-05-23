@@ -64,6 +64,7 @@ class	Request
 		int									getErrorCode(void) const;
 		void								setErrorCode(int err);
 		int									getState(void) const;
+		void								setState(int state);
 		ssize_t								getTimeout(void) const;
 		void								setTimeout(size_t time);
 		void								addTimeout(size_t time);

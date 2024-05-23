@@ -2,7 +2,7 @@
 #include "ResponseGen.hpp"
 #include <cstdio>
 
-ResponseGen::ResponseGen(Request &req, Server s): _req(req)
+ResponseGen::ResponseGen(Request &req, Server s, bool & closeOnEnd): _req(req), _closeOnEnd(closeOnEnd)
 {
 	_s = s;
 	done = 0;
@@ -99,6 +99,19 @@ void ResponseGen::deleteMethod(Location loca, std::string fileToOpen)
 		responseHtmlOkey();
 }
 
+void	ResponseGen::manageConnectionState(void)
+{
+	std::map<std::string, std::string>				headers = _req.getHeaderField();
+	std::map<std::string, std::string>::iterator	it = headers.find("connection");
+
+	this->_closeOnEnd = true;
+	if (it != headers.end())
+	{
+		if ((*it).second == "keep-alive")
+			this->_closeOnEnd = false;
+	}
+}
+
 Response ResponseGen::DoResponse()
 {
 	if (_req.getErrorCode() != 0)
@@ -106,7 +119,7 @@ Response ResponseGen::DoResponse()
 		createResponseError(_res, _req.getErrorCode(), _s.getErrorPage());
 		return (_res);
 	}
-
+	manageConnectionState();
 	std::map<std::string, Location> loc = _s.getLocations();
 	std::pair<std::string, std::string> dirLocFile = locFind(loc, _req.getRequestTarget());
 	std::string nameLoc = dirLocFile.first;
@@ -197,6 +210,8 @@ int ResponseGen::createResponseHtml( std::string fileToOpen, Response &res)
 
 void ResponseGen::createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ)
 {
+	if (codeError >= HTTP_ERROR_START)
+		this->_closeOnEnd = true;
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageServ.empty() && errorPageServ.find(codeError) != errorPageServ.end())
 	{
@@ -214,6 +229,8 @@ void ResponseGen::createResponseError( Response &res, int codeError, std::map<in
 
 void ResponseGen::createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ, std::map<int, std::string> errorPageLoc)
 {
+	if (codeError >= HTTP_ERROR_START)
+		this->_closeOnEnd = true;
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageLoc.empty() && errorPageLoc.find(codeError) != errorPageLoc.end())
 	{

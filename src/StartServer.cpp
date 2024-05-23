@@ -117,7 +117,7 @@ void	cleanServer(int kq, std::vector<socketServ> & sockets)
 {
 	for (std::vector<socketServ>::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
 	{
-		std::vector<int>	cliVec = (*itS).clientSock;
+		std::vector<int> &	cliVec = (*itS).clientSock;
 		for (std::vector<int>::iterator itV = cliVec.begin(); itV != cliVec.end(); itV++)
 		{
 			close(*itV);
@@ -134,7 +134,7 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::ma
 
 	for (std::vector<socketServ>::iterator itS = sockets.begin(); itS != sockets.end(); itS++)
 	{
-		std::vector<int>	cliVec = (*itS).clientSock;
+		std::vector<int> &	cliVec = (*itS).clientSock;
 		for (std::vector<int>::iterator itV = cliVec.begin(); itV != cliVec.end(); itV++)
 		{
 			if (*itV == fd)
@@ -145,13 +145,14 @@ void	disconnectClient(int kq, int fd, std::vector<socketServ> & sockets, std::ma
 		}
 	}
 	m.erase(fd);
-	close(fd);
 	EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, NULL ,0, NULL);
 	if (kevent(kq, &evSet, 1, NULL, 0, NULL) < 0)
 	{
+		close(fd);
 		cleanServer(kq, sockets);
 		throw std::runtime_error(strerror(errno));
 	}
+	close(fd);
 	std::cout << getTime() << PURPLE BOLD "Client #" << fd << " disconnected" NC << std::endl;
 }
 
@@ -184,11 +185,7 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 		/* std::ofstream outfile("test_img.png", std::ios::binary);
 		outfile.write(m.req.getBodyMssg().data(), m.req.getBodyMssg().size()); */
 		m.req.setTimeout(-1);
-		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv);
-		if (m.req.getErrorCode() >= HTTP_ERROR_START)
-			m.closeOnEnd = true;
-		else
-			m.closeOnEnd = false;
+		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv, m.closeOnEnd);
 		m.res = res.DoResponse().generateResponse();
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
@@ -225,10 +222,11 @@ void	manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets,
 			cleanServer(kq, sockets);
 			throw std::runtime_error(strerror(errno));
 		}
+		m.erase(clientSocket);
 		if (message.closeOnEnd)
 			disconnectClient(kq, clientSocket, sockets, m);
-		m.erase(clientSocket);
-		m[clientSocket].req.setRemainder(tmpRemainder);
+		else
+			m[clientSocket].req.setRemainder(tmpRemainder);
 	}
 }
 
@@ -250,9 +248,13 @@ void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & soc
 				cleanServer(kq, sockets);
 				throw std::runtime_error(strerror(errno));
 			}
+			std::cout << "timeouttttttttt" << std::endl;
 			m[(*it).first].req.setErrorCode(REQUEST_TIMEOUT);
-			exit(1);
+			m[(*it).first].req.setState(__FINISHED__);
+			//exit(1);
 		}
+		(void)kq;
+		(void)sockets;
 	}
 }
 

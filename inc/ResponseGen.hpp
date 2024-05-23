@@ -16,6 +16,8 @@ class ResponseGen
 		Response _res;
 		Server _s;
 		int done;
+		bool &	_closeOnEnd;
+		void	manageConnectionState(void);
 		void genResFile(std::string &fileToOpen, Location loca, std::string nameLoc);
 		void deleteMethod(Location loca, std::string fileToOpen);
 		void responseHtmlOkey();
@@ -33,7 +35,7 @@ class ResponseGen
 		void selectTypeOfResponse(Response &res, Server s, Location loca, Request req, std::string fileToOpen);
 		std::pair<std::string, std::string> locFind(std::map<std::string, Location> loc, std::string reqTarget);
 	public:
-		ResponseGen(Request &req, Server s);
+		ResponseGen(Request &req, Server s, bool & closeOnEnd);
 		Response DoResponse();
 		~ResponseGen();
 };

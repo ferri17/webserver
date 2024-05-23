@@ -16,12 +16,11 @@
 #include "Colors.hpp"
 
 #define MAX_CONNECTION_BACKLOG 10
-#define BUFFER_SIZE 1024
-#define HTTP_ERROR_START 400
+#define BUFFER_SIZE 1
 
 #define TIMER_EV_IDENT 4200000
 #define TIMER_LOOP_MS 1000
-#define REQ_TIMEOUT_MS 20000
+#define REQ_TIMEOUT_MS 5000
 
 
 typedef struct socketServ {

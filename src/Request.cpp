@@ -155,10 +155,11 @@ std::string							Request::getMethod(void) const { return (this->_requestLine._m
 std::string							Request::getRequestTarget(void) const { return (this->_requestLine._requestTarget); }
 std::string							Request::getProtocolVersion(void) const { return (this->_requestLine._protocolVersion); }
 int									Request::getErrorCode(void) const { return (this->_errorCode); }
+void								Request::setErrorCode(int err) { this->_errorCode = err; }
 int									Request::getState(void) const { return (this->_state); }
+void								Request::setState(int state) { this->_state = state; }
 std::string							Request::getRemainder(void) const { return(this->_remainder); }
 void								Request::setRemainder(std::string str) { this->_remainder = str; }
-void								Request::setErrorCode(int err) { this->_errorCode = err; }
 ssize_t								Request::getTimeout(void) const { return (this->_timeout); }
 void								Request::setTimeout(size_t time) { this->_timeout = time; }
 void								Request::addTimeout(size_t time) { this->_timeout += time; }

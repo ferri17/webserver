@@ -41,6 +41,8 @@
 //#define	GATEWAY_TIMEOUT 504
 #define	HTTP_VERSION_NOT_SUPPORTED 505
 
+#define HTTP_ERROR_START 400
+
 // Macro to find de correct msg
 #define ERROR_MESSAGE(code) \
     ((code) == 204 ? "No Content" : \
