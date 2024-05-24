@@ -10,7 +10,7 @@
 // #define ALLOW "Allow"
 // #define AUTHORIZATION "Authorization"
 // #define CACHE_CONTROL "Cache-Control"
-// #define CONNECTION "Connection"
+#define CONNECTION "Connection"
 // #define CONTENT_ENCODING "Content-Encoding"
 // #define CONTENT_LANGUAGE "Content-Language"
 #define CONTENT_LENGTH "Content-Length"

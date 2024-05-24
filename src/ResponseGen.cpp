@@ -49,8 +49,10 @@ void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
 {
 	Cgi cgi;
 	std::string cgiText;
+	std::vector<std::string> cookiesEnv;
 	std::string headerCookie = _req.getHeaderField()["cookie"];
-	std::vector<std::string> cookiesEnv = split(headerCookie, ';');
+	if (!headerCookie.empty())
+		cookiesEnv = split(headerCookie, ';');
 	if (cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv))
 		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
 	else
@@ -58,6 +60,32 @@ void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
 		_res.setCgiResponse(cgiText);
 	}
 	done = 1;
+}
+
+void ResponseGen::requestCgiPost(Location loca, std::string fileToOpen)
+{
+	Cgi cgi;
+	std::string cgiText;
+
+	fileToOpen = loca.getRoot() + "/" + fileToOpen;
+
+	std::vector<std::string> cookiesEnv;
+	std::string body = _req.getBodyMssg();
+	std::string file = "file=" + body;
+	std::string upload = "upload_store=" + loca.getUploadStore();
+	std::cout << upload << std::endl;
+	std::string headerCookie = _req.getHeaderField()["cookie"];
+	if (!headerCookie.empty())
+		cookiesEnv = split(headerCookie, ';');
+	cookiesEnv.push_back(file);
+	cookiesEnv.push_back(upload);
+	int status = cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv);
+	if (status == 1)
+		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
+	else if (status == 2)
+		createResponseError(_res, REQUEST_TIMEOUT, _s.getErrorPage(), loca.getErrorPage());
+	else
+		_res.setCgiResponse(cgiText);
 }
 
 void ResponseGen::responseHtmlOkey()
@@ -112,6 +140,108 @@ void	ResponseGen::manageConnectionState(void)
 	}
 }
 
+int		ResponseGen::checkUpload()
+{
+	std::map<std::string, std::string>	heders = _req.getHeaderField();
+	std::string content = heders.at("content-type");
+	if(!content.empty())
+	{
+		std::vector<std::string> splited = split(content, ';');
+		if (splited.size() == 2)
+		{
+			trim(splited[0]);
+			if (splited[0] == "multipart/form-data")
+			{
+				trim(splited[1]);
+				std::vector<std::string> boundary = split(splited[1], '=');
+				if (boundary.size() == 2)
+				{
+					_boundary = boundary[1];
+					return (1);
+				}
+			}
+		}
+	}
+	return (0);
+}
+
+std::vector<std::string> ResponseGen::parse_multipart_form_data(const std::string& body)
+{
+	std::vector<std::string> parts;
+	std::string delimiter = "--" + _boundary;
+	std::string end_boundary = delimiter + "--";
+
+	size_t pos = 0;
+	size_t end_pos = 0;
+
+	while ((pos = body.find(delimiter, end_pos)) != std::string::npos)
+	{
+		pos += delimiter.length();
+		end_pos = body.find(delimiter, pos);
+		if (end_pos == std::string::npos)
+			end_pos = body.find(end_boundary, pos);
+		if (end_pos != std::string::npos)
+		{
+			std::string part = body.substr(pos, end_pos - pos);
+			if (!part.empty())
+				parts.push_back(part);
+		}
+	}
+	return (parts);
+}
+
+std::string extract_filename(const std::string& line)
+{
+    size_t name_pos = line.find("filename=\"");
+
+    if (name_pos != std::string::npos)
+	{
+		size_t start_pos = name_pos + 10;
+		size_t end_pos = line.find("\"", start_pos);
+	
+		if (end_pos != std::string::npos)
+			return (line.substr(start_pos, end_pos - start_pos));
+    }
+    return ("");
+}
+
+int		ResponseGen::doUpload(Location loca)
+{
+	std::string body = _req.getBodyMssg();
+	std::istringstream iss(body);
+    std::string line;
+	std::string filename;
+
+    while (std::getline(iss, line))
+	{
+        if (line.find(_boundary) != std::string::npos)
+            break;
+    }
+
+	while (std::getline(iss, line))
+	{
+        if (line.find("Content-Disposition: form-data;") != std::string::npos)
+		{
+            filename = extract_filename(line);
+            if (!filename.empty())
+                break;
+        }
+    }
+
+    while (std::getline(iss, line) && line != "\r") {}
+
+    std::ostringstream file_content;
+    while (std::getline(iss, line) && line != _boundary)
+        file_content << line << "\n";
+
+    std::ofstream output_file((loca.getUploadStore() + filename).c_str(), std::ios::binary);
+    if (!output_file)
+        return (0);
+    output_file << file_content.str();
+    output_file.close();
+	return (1);
+}
+
 Response ResponseGen::DoResponse()
 {
 	if (_req.getErrorCode() != 0)
@@ -132,13 +262,23 @@ Response ResponseGen::DoResponse()
 
 		if (loca.checkMethod(_req.getMethod()) == 1)
 			createResponseError(_res, METHOD_NOT_ALLOWED, _s.getErrorPage(), loca.getErrorPage());
-		if (!loca.getReturnPag().empty())
+		else if (!loca.getReturnPag().empty())
 		{
 			_res.setStatusLine((statusLine){"HTTP/1.1", FOUND, ERROR_MESSAGE(FOUND)});
 			_res.addHeaderField(std::pair<std::string, std::string>(LOCATION, loca.getReturnPag()));
 		}
-		else if (_req.getMethod() == "POST")
-			requestCgi(loca, fileToOpen);
+		else if (_req.getMethod() == "POST" && !fileToOpen.empty())
+		{
+			if (checkUpload())
+			{
+				if (doUpload(loca))
+					responsePriority(fileToOpen, loca, fileToOpen);
+				else
+					createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
+			}
+			else
+				requestCgiPost(loca, fileToOpen);
+		}
 		else if (_req.getMethod() == "DELETE")
 			deleteMethod(loca, fileToOpen);
 		else
@@ -211,7 +351,10 @@ int ResponseGen::createResponseHtml( std::string fileToOpen, Response &res)
 void ResponseGen::createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ)
 {
 	if (codeError >= HTTP_ERROR_START)
+	{
 		this->_closeOnEnd = true;
+		res.addHeaderField(std::pair<std::string, std::string>(CONNECTION, "close"));
+	}
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageServ.empty() && errorPageServ.find(codeError) != errorPageServ.end())
 	{
@@ -230,7 +373,10 @@ void ResponseGen::createResponseError( Response &res, int codeError, std::map<in
 void ResponseGen::createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ, std::map<int, std::string> errorPageLoc)
 {
 	if (codeError >= HTTP_ERROR_START)
+	{
 		this->_closeOnEnd = true;
+		res.addHeaderField(std::pair<std::string, std::string>(CONNECTION, "close"));
+	}
 	res.setStatusLine((statusLine){"HTTP/1.1", codeError, ERROR_MESSAGE(codeError)});
 	if (!errorPageLoc.empty() && errorPageLoc.find(codeError) != errorPageLoc.end())
 	{
@@ -278,27 +424,6 @@ int ResponseGen::comparePratial(std::string src, std::string find)
 	return (i);
 }
 
-std::string ResponseGen::partialFind(std::map<std::string, Location> loc, std::string reqTarget)
-{
-	std::map<std::string, Location>::iterator itLoc = loc.begin();
-
-	for (; itLoc != loc.end(); itLoc++)
-	{
-		int i = comparePratial(itLoc->first, reqTarget);
-		if (itLoc->first[i] == '/')
-			return (itLoc->first);
-	}
-	return ("");
-}
-
-std::string ResponseGen::absolutFind(std::map<std::string, Location> loc, std::string reqTarget)
-{
-	std::map<std::string, Location>::iterator itLoc = loc.find(reqTarget);
-	if (itLoc == loc.end())
-		return ("");
-	return (itLoc->first);
-}
-
 void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, Request req, std::string fileToOpen)
 {
 	int type = accpetType(req);
@@ -314,6 +439,27 @@ void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, R
 	}
 	else
 		createResponseError(res, NOT_ACCEPTABLE, s.getErrorPage(), loca.getErrorPage());
+}
+
+std::string ResponseGen::partialFind(std::map<std::string, Location> loc, std::string reqTarget)
+{
+	std::map<std::string, Location>::iterator itLoc = loc.begin();
+
+	for (; itLoc != loc.end(); itLoc++)
+	{
+		int i = comparePratial(itLoc->first, reqTarget);
+		if (itLoc->first[i] == '/' && reqTarget[i] == '\0')
+			return (itLoc->first);
+	}
+	return ("");
+}
+
+std::string ResponseGen::absolutFind(std::map<std::string, Location> loc, std::string reqTarget)
+{
+	std::map<std::string, Location>::iterator itLoc = loc.find(reqTarget);
+	if (itLoc == loc.end())
+		return ("");
+	return (itLoc->first);
 }
 
 std::pair<std::string, std::string> ResponseGen::locFind(std::map<std::string, Location> loc, std::string reqTarget)

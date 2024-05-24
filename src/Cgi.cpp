@@ -1,6 +1,6 @@
 
 #include "Cgi.hpp"
-
+#include <signal.h>
 
 Cgi::Cgi()
 {
@@ -76,37 +76,55 @@ int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string 
 {
 	int pipefd[2];
 
-    pipe(pipefd);
+	pipe(pipefd);
 	t_cgi_type test = findExtension(file, cgi);
 
 	if (test.file.empty())
 		return (1);
-    pid_t pid = fork();
-    if (pid == -1)
-        return (1);
+	pid_t pid = fork();
+	if (pid == -1)
+		return (1);
 	else if (pid == 0)
 	{
-        close(pipefd[0]);
-        dup2(pipefd[1], STDOUT_FILENO);
-        close(pipefd[1]);
-        char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		close(pipefd[1]);
+		char * const argv[] = {strdup(test.file.c_str()),strdup(file.c_str()), NULL};
 		char **env = generateEnv(cookies);
-        execve(test.file.c_str(), argv, env);
-        exit(1);
+		execve(test.file.c_str(), argv, env);
+		exit(1);
 	}
 	else
 	{
 		close(pipefd[1]);
-        std::stringstream ss;
-        char buffer[1024];
-        ssize_t bytes_read;
-        while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
-            ss.write(buffer, bytes_read);
-        close(pipefd[0]);
-        int status;
-        waitpid(pid, &status, 0);
+		std::stringstream ss;
+		char buffer[1024];
+		ssize_t bytes_read;
+		int status;
+		pid_t result = waitpid(pid, &status, WNOHANG);
+		if (result == 0)
+		{
+			sleep(1);
+			result = waitpid(pid, &status, WNOHANG);
+			if (result == 0)
+			{
+				kill(pid, SIGKILL);
+				return (2);
+			}
+		}
+		else if (result < 0)
+		{
+			perror("waitpid");
+			return (1);
+		}
 		if (WEXITSTATUS(status) != 0)
 			return (1);
+		while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
+		{
+			std::cout << buffer << std::endl;
+			ss.write(buffer, bytes_read);
+		}
+		close(pipefd[0]);
 		s = ss.str();
 	}
 	return (0);
