@@ -71,7 +71,7 @@ void ResponseGen::requestCgiPost(Location loca, std::string fileToOpen)
 
 	std::vector<std::string> cookiesEnv;
 	std::string body = _req.getBodyMssg();
-	std::string file = "file=" + body;
+	std::string file = "body=" + body;
 	std::string upload = "upload_store=" + loca.getUploadStore();
 	std::cout << upload << std::endl;
 	std::string headerCookie = _req.getHeaderField()["cookie"];
@@ -207,6 +207,7 @@ std::string extract_filename(const std::string& line)
 
 int		ResponseGen::doUpload(Location loca)
 {
+	std::cout << _req << std::endl;
 	std::string body = _req.getBodyMssg();
 	std::istringstream iss(body);
     std::string line;
@@ -233,7 +234,7 @@ int		ResponseGen::doUpload(Location loca)
     std::ostringstream file_content;
     while (std::getline(iss, line) && line != _boundary)
         file_content << line << "\n";
-
+	std::cout << loca.getUploadStore() + filename;
     std::ofstream output_file((loca.getUploadStore() + filename).c_str(), std::ios::binary);
     if (!output_file)
         return (0);

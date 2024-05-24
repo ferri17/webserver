@@ -35,7 +35,6 @@ void	Request::parseNewBuffer(const char * buffer, int buffSize, long maxBodySize
 	{
 		this->_state = __FINISHED__;
 		std::cerr << getTime() << RED BOLD << "Error parsing: "  << ERROR_MESSAGE(_errorCode) << NC << std::endl;
-		std::cerr << getTime() << RED BOLD << "Error parsing: "  << e.what() << NC << std::endl;
 	}
 }
 

@@ -15,7 +15,7 @@
 #include "Server.hpp"
 #include "Colors.hpp"
 
-#define MAX_CONNECTION_BACKLOG 10
+#define MAX_CONNECTION_BACKLOG 200
 #define BUFFER_SIZE 1024
 
 #define TIMER_EV_IDENT 4200000

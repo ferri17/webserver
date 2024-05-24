@@ -182,9 +182,6 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 
 	if (m.req.getState() == __FINISHED__)
 	{
-		/* std::ofstream outfile("test_img.png", std::ios::binary);
-		outfile.write(m.req.getBodyMssg().data(), m.req.getBodyMssg().size()); */
-		std::cout << "--" << m.req.getBodyMssg() << "--" << std::endl;
 		m.req.setTimeout(-1);
 		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv, m.closeOnEnd);
 		m.res = res.DoResponse().generateResponse();
