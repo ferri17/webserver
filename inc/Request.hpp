@@ -29,6 +29,8 @@ class	Request
 		std::string							_bodyMssg;
 		int									_errorCode;
 		std::string							_remainder;
+		std::string							_chunk;
+		ssize_t								_chunkSize;
 		int									_state;
 		ssize_t								_timeout;
 

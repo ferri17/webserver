@@ -135,7 +135,7 @@ void	ResponseGen::manageConnectionState(void)
 	this->_closeOnEnd = true;
 	if (it != headers.end())
 	{
-		if ((*it).second == "keep-alive")
+		if (stringToLower((*it).second) == "keep-alive")
 			this->_closeOnEnd = false;
 	}
 }

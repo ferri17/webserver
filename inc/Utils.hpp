@@ -37,10 +37,11 @@
 std::vector<std::string> split(const std::string& s, char delimiter);
 // Stores as an empty string repeated delimiters
 std::vector<std::string> split_r(const std::string& s, char delimiter);
-bool	isInt(const std::string & value);
-bool	isUsAscii(int c);
-bool	isOWS(int c);
+bool		isInt(const std::string & value);
+bool		isUsAscii(int c);
+bool		isOWS(int c);
 std::string	stringToLower(std::string str);
 std::string toString(int num);
 std::string	getTime( void );
 std::string trim(std::string& str);
+int			hex_to_int(const std::string& hex_string);

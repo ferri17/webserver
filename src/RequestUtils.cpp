@@ -121,6 +121,7 @@ bool	Request::checkHeaderFields(void)
 	std::map<std::string, std::string>::iterator	itLength = this->_headerField.find("content-length");
 	std::map<std::string, std::string>::iterator	itEncoding = this->_headerField.find("transfer-encoding");
 	std::map<std::string, std::string>::iterator	itHost = this->_headerField.find("host");
+	std::map<std::string, std::string>::iterator	itConnection = this->_headerField.find("connection");
 
 	// Check host header field
 	if (itHost == this->_headerField.end())
@@ -128,6 +129,16 @@ bool	Request::checkHeaderFields(void)
 		this->_errorCode = BAD_REQUEST;
 		//this->_errorMssg = HOST_NOT_FOUND_STR;
 		return (false);
+	}
+	// Check connection header field
+	if (itConnection != this->_headerField.end())
+	{
+		std::string	con = stringToLower((*itConnection).second);
+		if (con != "keep-alive" && con != "close")
+		{
+			this->_errorCode = BAD_REQUEST;
+			return (false);
+		}
 	}
 	// Check content-length and transfer-encoding header field
 	if (itLength != this->_headerField.end() && itEncoding != this->_headerField.end())

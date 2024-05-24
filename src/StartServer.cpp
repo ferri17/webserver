@@ -184,6 +184,7 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 	{
 		/* std::ofstream outfile("test_img.png", std::ios::binary);
 		outfile.write(m.req.getBodyMssg().data(), m.req.getBodyMssg().size()); */
+		std::cout << "--" << m.req.getBodyMssg() << "--" << std::endl;
 		m.req.setTimeout(-1);
 		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv, m.closeOnEnd);
 		m.res = res.DoResponse().generateResponse();
@@ -222,11 +223,13 @@ void	manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets,
 			cleanServer(kq, sockets);
 			throw std::runtime_error(strerror(errno));
 		}
-		m.erase(clientSocket);
 		if (message.closeOnEnd)
 			disconnectClient(kq, clientSocket, sockets, m);
 		else
+		{
+			m.erase(clientSocket);
 			m[clientSocket].req.setRemainder(tmpRemainder);
+		}
 	}
 }
 
@@ -248,13 +251,11 @@ void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & soc
 				cleanServer(kq, sockets);
 				throw std::runtime_error(strerror(errno));
 			}
-			std::cout << "timeouttttttttt" << std::endl;
 			m[(*it).first].req.setErrorCode(REQUEST_TIMEOUT);
 			m[(*it).first].req.setState(__FINISHED__);
-			//exit(1);
+			ResponseGen	res(m[(*it).first].req, getSocketServ((*it).first, sockets).serv, m[(*it).first].closeOnEnd);
+			m[(*it).first].res = res.DoResponse().generateResponse();
 		}
-		(void)kq;
-		(void)sockets;
 	}
 }
 
