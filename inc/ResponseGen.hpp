@@ -17,8 +17,11 @@ class ResponseGen
 		Server		_s;
 		int			done;
 		bool		&_closeOnEnd;
-
+		std::string _boundary;
 		void		manageConnectionState(void);
+		std::vector<std::string> parse_multipart_form_data(const std::string& body);
+		int			checkUpload();
+		int		doUpload(Location loca);
 		void 		requestCgiPost(Location loca, std::string fileToOpen);
 		void		genResFile(std::string &fileToOpen, Location loca, std::string nameLoc);
 		void		deleteMethod(Location loca, std::string fileToOpen);
