@@ -35,6 +35,7 @@ void	Request::parseNewBuffer(const char * buffer, int buffSize, long maxBodySize
 	{
 		this->_state = __FINISHED__;
 		std::cerr << getTime() << RED BOLD << "Error parsing: "  << ERROR_MESSAGE(_errorCode) << NC << std::endl;
+		std::cerr << getTime() << RED BOLD << "Error parsing: "  << e.what() << NC << std::endl;
 	}
 }
 
@@ -113,7 +114,6 @@ void	Request::parsingBody(long maxBodySize)
 		if (this->_bodyMssg.length() > static_cast<size_t>(maxBodySize))
 		{
 			this->_errorCode = REQUEST_ENTITY_TOO_LARGE;
-			//this->_errorMssg = REQUEST_TOO_LARGE_STR;
 			this->_state = __FINISHED__;
 			throw std::runtime_error("Error max client body size");
 		}
@@ -125,21 +125,21 @@ void	Request::parsingBody(long maxBodySize)
 	}
 	else if (itEncoding != this->_headerField.end() && stringToLower((*itEncoding).second) == "chunked")
 	{
-		if (this->_chunkSize == -1)
-		{
-			int i;
+		size_t	i;
 
-			for (i = 0; static_cast<unsigned long>(i) < this->_remainder.size(); i++)
+		for (i = 0; i < this->_remainder.size(); i++)
+		{	
+			if (this->_chunkSize == -1)	
 			{
 				if (this->_remainder.at(i) == LF)
 				{
 					this->_remainder = this->_remainder.substr(i + 1, std::string::npos);
+					i = 0;
 					if (this->_chunk.back() == CR)
 						this->_chunk.erase(this->_chunk.length() - 1);
 					if ((this->_chunkSize = hex_to_int(this->_chunk)) < 0)
 					{
 						this->_errorCode = BAD_REQUEST;
-						this->_state = __FINISHED__;
 						throw std::runtime_error("Error reading chunks");
 					}
 					else if (this->_chunkSize == 0)
@@ -147,25 +147,34 @@ void	Request::parsingBody(long maxBodySize)
 						this->_state = __FINISHED__;
 						return ;
 					}
-					break;
+					this->_chunk.clear();
 				}
-				this->_chunk.push_back(this->_remainder.at(i));
+				else
+				{
+					this->_chunk.push_back(this->_remainder.at(i));
+				}
 			}
-			if (static_cast<unsigned long>(i) == this->_remainder.size())
-				this->_remainder.clear();
-		}
-		if (this->_chunkSize != -1)
-		{
-			for (int i = 0; this->_chunkSize > 0 && static_cast<unsigned long>(i) < this->_chunk.size(); i++, this->_chunkSize--)
+			if (this->_chunkSize != -1)
 			{
-				this->_bodyMssg.push_back(this->_chunk.at(i));
-			}
-			this->_chunk.clear();
-			if (this->_chunkSize != -1 || i != this->_chunk.size())
-			{
-				this->_errorCode = BAD_REQUEST;
-				this->_state = __FINISHED__;
-				throw std::runtime_error("Error reading chunks");
+				if (this->_chunkSize == 0)
+				{
+					if (this->_remainder.at(i) != CR && this->_remainder.at(i) != LF)
+					{
+						this->_errorCode = BAD_REQUEST;
+						throw std::runtime_error("Error reading chunks");
+					}
+					if (this->_remainder.at(i) == CR)
+						this->_remainder = this->_remainder.substr(i + 2, std::string::npos);
+					else
+						this->_remainder = this->_remainder.substr(i + 1, std::string::npos);
+					this->_chunkSize = -1;
+					i = 0;
+				}
+				else
+				{
+					this->_bodyMssg.push_back(this->_remainder.at(i));
+					this->_chunkSize--;
+				}
 			}
 		}
 	}
