@@ -16,7 +16,7 @@
 #include "Colors.hpp"
 
 #define MAX_CONNECTION_BACKLOG 10
-#define BUFFER_SIZE 1
+#define BUFFER_SIZE 1024
 
 #define TIMER_EV_IDENT 4200000
 #define TIMER_LOOP_MS 1000

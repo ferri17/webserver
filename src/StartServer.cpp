@@ -222,11 +222,13 @@ void	manageResponse(int clientSocket, int kq, std::vector<socketServ> & sockets,
 			cleanServer(kq, sockets);
 			throw std::runtime_error(strerror(errno));
 		}
-		m.erase(clientSocket);
 		if (message.closeOnEnd)
 			disconnectClient(kq, clientSocket, sockets, m);
 		else
+		{
+			m.erase(clientSocket);
 			m[clientSocket].req.setRemainder(tmpRemainder);
+		}
 	}
 }
 
@@ -251,10 +253,9 @@ void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & soc
 			std::cout << "timeouttttttttt" << std::endl;
 			m[(*it).first].req.setErrorCode(REQUEST_TIMEOUT);
 			m[(*it).first].req.setState(__FINISHED__);
-			//exit(1);
+			ResponseGen	res(m[(*it).first].req, getSocketServ((*it).first, sockets).serv, m[(*it).first].closeOnEnd);
+			m[(*it).first].res = res.DoResponse().generateResponse();
 		}
-		(void)kq;
-		(void)sockets;
 	}
 }
 

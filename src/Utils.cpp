@@ -83,4 +83,21 @@ std::string	stringToLower(std::string str)
 	return (str);
 }
 
-
+int	hex_to_int(const std::string& hex_string)
+{
+	int	result = 0;
+	for (size_t i = 0; i < hex_string.length(); ++i)
+	{
+		result *= 16;
+		char	c = hex_string[i];
+		if (c >= '0' && c <= '9')
+			result += c - '0';
+		else if (c >= 'A' && c <= 'F')
+			result += c - 'A' + 10;
+		else if (c >= 'a' && c <= 'f')
+			result += c - 'a' + 10;
+		else
+			return (-1);
+	}
+	return (result);
+}
