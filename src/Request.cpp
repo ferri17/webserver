@@ -1,6 +1,6 @@
 #include "Request.hpp"
 
-Request::Request(void) : _errorCode(0), _chunkSize(-1), _state(__SKIPPING_GRBG__), _timeout(-1) {}
+Request::Request(void) : _errorCode(0), _chunkSize(-1), _loadChunk(false), _state(__SKIPPING_GRBG__), _timeout(-1) {}
 Request::~Request(void) {}
 
 /*
@@ -124,63 +124,89 @@ void	Request::parsingBody(long maxBodySize)
 	}
 	else if (itEncoding != this->_headerField.end() && stringToLower((*itEncoding).second) == "chunked")
 	{
-		size_t	i;
-
-		for (i = 0; i < this->_remainder.size(); i++)
-		{	
-			if (this->_chunkSize == -1)	
-			{
-				if (this->_remainder.at(i) == LF)
-				{
-					this->_remainder = this->_remainder.substr(i + 1, std::string::npos);
-					i = 0;
-					if (this->_chunk.back() == CR)
-						this->_chunk.erase(this->_chunk.length() - 1);
-					if ((this->_chunkSize = hex_to_int(this->_chunk)) < 0)
-					{
-						this->_errorCode = BAD_REQUEST;
-						throw std::runtime_error("Error reading chunks");
-					}
-					else if (this->_chunkSize == 0)
-					{
-						this->_state = __FINISHED__;
-						return ;
-					}
-					this->_chunk.clear();
-				}
-				else
-				{
-					this->_chunk.push_back(this->_remainder.at(i));
-				}
-			}
-			if (this->_chunkSize != -1)
-			{
-				if (this->_chunkSize == 0)
-				{
-					if (this->_remainder.at(i) != CR && this->_remainder.at(i) != LF)
-					{
-						this->_errorCode = BAD_REQUEST;
-						throw std::runtime_error("Error reading chunks");
-					}
-					if (this->_remainder.at(i) == CR)
-						this->_remainder = this->_remainder.substr(i + 2, std::string::npos);
-					else
-						this->_remainder = this->_remainder.substr(i + 1, std::string::npos);
-					this->_chunkSize = -1;
-					i = 0;
-				}
-				else
-				{
-					this->_bodyMssg.push_back(this->_remainder.at(i));
-					this->_chunkSize--;
-				}
-			}
-		}
+		// Read body message using transfer-encoding
+		if (!this->_loadChunk)	
+			findChunkSize();
+		else if (this->_state != __FINISHED__)
+			loadChunk();
 	}
 	else
 	{
 		this->_state = __FINISHED__;
 	}
+}
+
+void	Request::loadChunk(void)
+{
+	size_t	i;
+
+	for (i = 0; i < this->_remainder.size() && this->_chunkSize; i++, this->_chunkSize--)
+	{
+		this->_bodyMssg.push_back(this->_remainder.at(i));
+	}
+	if (this->_chunkSize)
+	{
+		this->_remainder.clear();
+	}
+	else
+	{
+		if (i == this->_remainder.size())
+			this->_remainder.clear();
+		else if (i == this->_remainder.size() - 1)
+		{
+			if (this->_remainder.at(i) == LF)
+			{
+				this->_remainder.clear();
+				this->_loadChunk = false;
+			}
+		}
+		else
+		{
+			this->_loadChunk = false;
+			if (this->_remainder.at(i) == CR && this->_remainder.at(i + 1) == LF)
+				this->_remainder = this->_remainder.substr(i + 2, std::string::npos);
+			else if (this->_remainder.at(i) == LF)
+				this->_remainder = this->_remainder.substr(i + 1, std::string::npos);
+			else
+			{
+				this->_errorCode = BAD_REQUEST;
+				throw std::runtime_error("Error reading chunks");
+			}
+			if (!this->_remainder.empty())
+				findChunkSize();
+		}
+	}
+}
+
+void	Request::findChunkSize(void)
+{
+	size_t	i;
+
+	for (i = 0; i < this->_remainder.size(); i++)
+	{
+		if (this->_remainder.at(i) == LF)
+		{
+			this->_remainder = this->_remainder.substr(i + 1, std::string::npos);
+			if (this->_chunk.back() == CR)
+				this->_chunk.erase(this->_chunk.length() - 1);
+			if ((this->_chunkSize = hex_to_int(this->_chunk)) < 0)
+			{
+				this->_errorCode = BAD_REQUEST;
+				throw std::runtime_error("Error reading chunks");
+			}
+			else if (this->_chunkSize == 0)
+			{
+				this->_state = __FINISHED__;
+				return ;
+			}
+			this->_chunk.clear();
+			this->_loadChunk = true;
+			loadChunk();
+		}
+		else
+			this->_chunk.push_back(this->_remainder.at(i));
+	}
+	this->_remainder.clear();
 }
 
 Request &	Request::operator=(const Request & other)

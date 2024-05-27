@@ -1,0 +1,73 @@
+
+GET / HTTP/1.1
+Host: hey
+Content-Type: text/html
+Transfer-Encoding: chunked
+Accept: */*
+Connection: keep-alive
+
+7
+Mozilla
+11
+Developer Network
+0
+
+
+
+
+GET / HTTP/1.1
+Host: hey
+Content-Type: text/html
+Transfer-Encoding: chunked
+Accept: */*
+Connection: keep-alive
+
+7
+{"key":
+8
+"value"}
+0
+
+
+
+GET / HTTP/1.1
+Host: hey
+Content-Type: text/html
+Transfer-Encoding: chunked
+Accept: */*
+Connection: keep-alive
+
+c
+<note><to>Jo
+b
+hn</to><fro
+9
+m>Jane</f
+6
+rom></
+5
+note>
+0
+
+
+
+
+
+GET / HTTP/1.1
+Host: hey
+Content-Type: text/html
+Transfer-Encoding: chunked
+Accept: */*
+Connection: keep-alive
+
+c
+<note><to>Jo
+b
+hn</to><frosdasad
+9
+m>Jane</f
+6
+rom></
+5
+note>
+0

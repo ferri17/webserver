@@ -182,9 +182,11 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 
 	if (m.req.getState() == __FINISHED__)
 	{
+		std::cout << "body parsed:" << m.req.getBodyMssg() << "-" << std::endl;
 		m.req.setTimeout(-1);
 		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv, m.closeOnEnd);
 		m.res = res.DoResponse().generateResponse();
+		//std::cout << "res:" << m.res << std::endl;
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
 		if (kevent(kq, evSet, 2, 0, 0, 0) < 0)
