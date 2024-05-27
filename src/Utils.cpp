@@ -1,5 +1,6 @@
 
 #include "Utils.hpp"
+#include <sys/stat.h>
 
 std::string toString(int num)
 {
@@ -69,6 +70,22 @@ bool	isUsAscii(int c)
 bool	isOWS(int c)
 {
 	return (c == HTAB || c == SP);
+}
+
+int checkValidFile(std::string fileToOpen, std::ifstream &file)
+{
+	if (!file.is_open())
+		return(1);
+
+	struct stat fileInfo;
+	if (stat(fileToOpen.c_str(), &fileInfo) == 0)
+	{
+		if (S_ISDIR(fileInfo.st_mode))
+			return (1);
+	}
+	else
+		return (1);
+	return (0);
 }
 
 std::string	stringToLower(std::string str)

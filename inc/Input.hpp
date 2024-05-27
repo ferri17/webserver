@@ -20,6 +20,7 @@ class Input
 		int	limitsNum(std::string num, int min, int max);
 		int checkValidAutoIndex(std::string lineSplit);
 		int checkValidNames(std::vector<std::string> &lineSplit);
+		int checkValidSizeInBytes(std::string str, int type);
 		int checkValidSize(std::string str);
 		int checkValidDir(std::string str);
 		int checkValidDirSemiColon(std::string &str);

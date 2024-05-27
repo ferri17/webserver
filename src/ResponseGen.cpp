@@ -1,6 +1,5 @@
 
 #include "ResponseGen.hpp"
-#include <cstdio>
 
 ResponseGen::ResponseGen(Request &req, Server s, bool & closeOnEnd): _req(req), _closeOnEnd(closeOnEnd)
 {
@@ -62,32 +61,6 @@ void ResponseGen::requestCgi(Location loca, std::string fileToOpen)
 	done = 1;
 }
 
-void ResponseGen::requestCgiPost(Location loca, std::string fileToOpen)
-{
-	Cgi cgi;
-	std::string cgiText;
-
-	fileToOpen = loca.getRoot() + "/" + fileToOpen;
-
-	std::vector<std::string> cookiesEnv;
-	std::string body = _req.getBodyMssg();
-	std::string file = "body=" + body;
-	std::string upload = "upload_store=" + loca.getUploadStore();
-	std::cout << upload << std::endl;
-	std::string headerCookie = _req.getHeaderField()["cookie"];
-	if (!headerCookie.empty())
-		cookiesEnv = split(headerCookie, ';');
-	cookiesEnv.push_back(file);
-	cookiesEnv.push_back(upload);
-	int status = cgi.generateCgi(loca.getCgi(), fileToOpen, cgiText, cookiesEnv);
-	if (status == 1)
-		createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
-	else if (status == 2)
-		createResponseError(_res, REQUEST_TIMEOUT, _s.getErrorPage(), loca.getErrorPage());
-	else
-		_res.setCgiResponse(cgiText);
-}
-
 void ResponseGen::responseHtmlOkey()
 {
 	std::string body;
@@ -143,7 +116,7 @@ void	ResponseGen::manageConnectionState(void)
 int		ResponseGen::checkUpload()
 {
 	std::map<std::string, std::string>	heders = _req.getHeaderField();
-	std::string content = heders.at("content-type");
+	std::string content = heders["content-type"];
 	if(!content.empty())
 	{
 		std::vector<std::string> splited = split(content, ';');
@@ -205,6 +178,18 @@ std::string extract_filename(const std::string& line)
     return ("");
 }
 
+std::string extract_file_content(const std::string& part)
+{
+	std::size_t pos = part.find("\r\n\r\n");
+
+	if (pos != std::string::npos)
+	{
+		pos += 4;
+		return (part.substr(pos, std::string::npos));
+	}
+	return "";
+}
+
 int		ResponseGen::doUpload(Location loca)
 {
 	std::cout << _req << std::endl;
@@ -213,6 +198,8 @@ int		ResponseGen::doUpload(Location loca)
     std::string line;
 	std::string filename;
 
+	if (loca.getUploadStore().empty())
+		return(0);
     while (std::getline(iss, line))
 	{
         if (line.find(_boundary) != std::string::npos)
@@ -229,16 +216,16 @@ int		ResponseGen::doUpload(Location loca)
         }
     }
 
-    while (std::getline(iss, line) && line != "\r") {}
-
-    std::ostringstream file_content;
-    while (std::getline(iss, line) && line != _boundary)
-        file_content << line << "\n";
+	std::vector<std::string> parts = parse_multipart_form_data(body);
+	if (parts.size() != 2)
+		return (0);
+	
+	std::string file_content = extract_file_content(parts[0]);
 	std::cout << loca.getUploadStore() + filename;
     std::ofstream output_file((loca.getUploadStore() + filename).c_str(), std::ios::binary);
     if (!output_file)
         return (0);
-    output_file << file_content.str();
+    output_file << file_content;
     output_file.close();
 	return (1);
 }
@@ -278,7 +265,7 @@ Response ResponseGen::DoResponse()
 					createResponseError(_res, INTERNAL_SERVER_ERROR, _s.getErrorPage(), loca.getErrorPage());
 			}
 			else
-				requestCgiPost(loca, fileToOpen);
+				responsePriority(fileToOpen, loca, fileToOpen);
 		}
 		else if (_req.getMethod() == "DELETE")
 			deleteMethod(loca, fileToOpen);
@@ -337,13 +324,30 @@ int ResponseGen::createResponseHtml( std::string fileToOpen, Response &res)
 {
 	std::ifstream file(fileToOpen);
 
-	if (!file.is_open())
+	if (checkValidFile(fileToOpen, file))
 		return (1);
+
 	std::string html;
 
 	getline(file, html, '\0');
 	file.close();
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/html"));
+	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
+	res.setBody(html);
+	return (0);
+}
+
+int ResponseGen::createResponseCss( std::string fileToOpen, Response &res)
+{
+	std::ifstream file(fileToOpen);
+	if (checkValidFile(fileToOpen, file))
+		return (1);
+
+	std::string html;
+
+	getline(file, html, '\0');
+	file.close();
+	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_TYPE, "text/css"));
 	res.addHeaderField(std::pair<std::string, std::string>(CONTENT_LENGTH, toString(html.size())));
 	res.setBody(html);
 	return (0);
@@ -406,6 +410,8 @@ int ResponseGen::accpetType(Request req)
 
 	if (acceptTypes.find("text/html") != acceptTypes.npos)
 		return (1);
+	else if (acceptTypes.find("text/css") != acceptTypes.npos)
+		return (3);
 	else if (acceptTypes.find("image/") != acceptTypes.npos)
 		return (2);
 	else if (acceptTypes.find("*/*") != acceptTypes.npos)
@@ -431,6 +437,11 @@ void ResponseGen::selectTypeOfResponse(Response &res, Server s, Location loca, R
 	if (type == 1)
 	{
 		if (createResponseHtml(fileToOpen, res))
+			createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
+	}
+	else if (type == 3)
+	{
+		if (createResponseCss(fileToOpen, res))
 			createResponseError(res, NOT_FOUND, s.getErrorPage(), loca.getErrorPage());
 	}
 	else if (type == 2)
