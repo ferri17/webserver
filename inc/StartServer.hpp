@@ -26,7 +26,8 @@
 typedef struct socketServ {
 	int					servSock;
 	std::vector<int>	clientSock;
-	Server 				serv;
+	//Server 				serv;
+	std::vector<Server> servers;
 }	socketServ;
 
 typedef struct mssg {
@@ -38,6 +39,9 @@ typedef struct mssg {
 void					startServers(std::vector<Server> & s);
 std::vector<socketServ>	initSockets(std::vector<Server> & s);
 Server &				getTargetServer(std::vector<std::pair<Server &, int> >, int fdTarget);
+void					resolveBindingError(struct sockaddr_in & cAddress, std::vector<struct sockaddr_in> & addresses, 
+							std::vector<socketServ> & sockets, t_listen & cListen, Server &	cServ);
+Server &				resolveServerName(Request & req, std::vector<Server> & servers);
 void					runEventLoop(int kq, std::vector<socketServ> & sockets, size_t size);
 bool					isServerSocket(int fd, std::vector<socketServ> & sockets);
 socketServ &			getSocketServ(int targetFd, std::vector<socketServ> & sockets);
