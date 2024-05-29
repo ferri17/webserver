@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <ctime>
 #include "Colors.hpp"
 
@@ -45,3 +46,4 @@ std::string toString(int num);
 std::string	getTime( void );
 std::string trim(std::string& str);
 int			hex_to_int(const std::string& hex_string);
+int			checkValidFile(std::string fileToOpen, std::ifstream &file);

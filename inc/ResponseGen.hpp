@@ -21,8 +21,7 @@ class ResponseGen
 		void		manageConnectionState(void);
 		std::vector<std::string> parse_multipart_form_data(const std::string& body);
 		int			checkUpload();
-		int		doUpload(Location loca);
-		void 		requestCgiPost(Location loca, std::string fileToOpen);
+		int			doUpload(Location loca);
 		void		genResFile(std::string &fileToOpen, Location loca, std::string nameLoc);
 		void		deleteMethod(Location loca, std::string fileToOpen);
 		void		responseHtmlOkey();
@@ -31,6 +30,7 @@ class ResponseGen
 		int			createResponseImage( std::string fileToOpen, Response &res);
 		int			createDirectory(Response &res, std::string dir);
 		int			createResponseHtml( std::string fileToOpen, Response &res);
+		int 		createResponseCss( std::string fileToOpen, Response &res);
 		void		createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ);
 		void		createResponseError( Response &res, int codeError, std::map<int, std::string> errorPageServ, std::map<int, std::string> errorPageLoc);
 		int			accpetType(Request req);

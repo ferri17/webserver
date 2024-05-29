@@ -30,7 +30,8 @@ void Input::reopenFile ( void )
 		throw std::runtime_error("Error with archive data");
 }
 
-void Input::eraseAllTabs(std::string& str, const std::string& token) {
+void Input::eraseAllTabs(std::string& str, const std::string& token)
+{
     size_t pos = 0;
     while ((pos = str.find(token, pos)) != std::string::npos)
         str[pos] = ' ';
@@ -84,6 +85,19 @@ int Input::checkValidNames(std::vector<std::string> &lineSplit)
 	return (1);
 }
 
+int Input::checkValidSizeInBytes(std::string str, int type)
+{
+	int num = atoi(str.c_str());
+
+	if (type == GIGAS && num > 2)
+		return (KO);
+	else if (type == MEGAS && num > (2 * 1000))
+		return (KO);
+	else if (type == KILOS && num > (2 * 1000 * 1000))
+		return (KO);
+	return(type);
+}
+
 int Input::checkValidSize(std::string str)
 {
 	int type = BYTES;
@@ -103,7 +117,7 @@ int Input::checkValidSize(std::string str)
 		str.erase(str.size() - 1);
 	}
 	if (isInt(str))
-		return(type);
+		return (checkValidSizeInBytes(str, type));
 	return(KO);
 }
 
@@ -203,7 +217,7 @@ int Input::checkVarServer(std::vector<std::string> lineSplit, int flag, Server &
 			{
 				long num = atoi(lineSplit[1].c_str());
 				for (int i = 0; i < type; i++)
-					num *= 1024;
+					num *= 1000;
 				s.setClientMaxBodySize(num);
 				return	(VALID_ARG);
 			}
