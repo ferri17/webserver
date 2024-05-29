@@ -5,13 +5,13 @@
 #include <dirent.h>
 #include "ResponseGen.hpp"
 
-int	createNewSocket(t_listen & list)
+int	createNewSocket(t_listen & list, struct sockaddr_in & cAddress, std::vector<struct sockaddr_in> & addresses)
 {
-	std::string		ip = list.ip;
-	std::string		port = toString(list.port);
-	int				localSocket, errGai, option;
-	struct addrinfo	*addr;
-	struct addrinfo	hints;
+	std::string			ip = list.ip;
+	std::string			port = toString(list.port);
+	int					localSocket, errGai, option;
+	struct addrinfo		*addr;
+	struct addrinfo		hints;
 	
 	if (ip.empty())
 		ip = "localhost";
@@ -23,6 +23,7 @@ int	createNewSocket(t_listen & list)
 	{
 		throw std::runtime_error(gai_strerror(errGai));
 	}
+	memcpy(&cAddress, addr->ai_addr, sizeof(sockaddr_in));
 	if ((localSocket = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol)) < 0)
 	{
 		freeaddrinfo(addr);
@@ -40,13 +41,8 @@ int	createNewSocket(t_listen & list)
 	}
 	if (bind(localSocket, addr->ai_addr, addr->ai_addrlen) != 0)
 	{
-		sockaddr_in* sockAddrIn = reinterpret_cast<sockaddr_in*>(addr->ai_addr);
-		int port = ntohs(sockAddrIn->sin_port);
-		std::string	mssgErr = strerror(errno);
-		mssgErr += ": Port -> ";
-		mssgErr += toString(port);
 		freeaddrinfo(addr);
-		throw std::runtime_error(mssgErr);
+		return (-1);
 	}
 	if (listen(localSocket, MAX_CONNECTION_BACKLOG) != 0)
 	{
@@ -54,30 +50,36 @@ int	createNewSocket(t_listen & list)
 		throw std::runtime_error(strerror(errno));
 	}
 	freeaddrinfo(addr);
+	addresses.push_back(cAddress);
 	return (localSocket);
 }
 
 std::vector<socketServ>	initSockets(std::vector<Server> & s)
 {
-	int						sId = 0;
-	socketServ				socks;
-	std::vector<t_listen>	cListen;
-	std::vector<socketServ>	sockets;
+	int							sId = 0;
+	std::vector<t_listen>		cListen;
+	std::vector<socketServ>		sockets;
+	struct sockaddr_in			cAddress;
+	std::vector<struct sockaddr_in>	addresses;
+
 
 	for (std::vector<Server>::iterator itServ = s.begin(); itServ != s.end(); itServ++)
 	{
+		socketServ					socks;
 		Server &	currentServ = (*itServ);
 
-		socks.serv = currentServ;
+		socks.servers.push_back(currentServ);
 		cListen = currentServ.getListen();
 		std::cout << getTime() << BOLD GREEN "Server #" << sId << " running:" NC << std::endl;
 		for (std::vector<t_listen>::iterator itListen = cListen.begin(); itListen != cListen.end(); itListen++)
 		{
 			try
 			{
-				int	fd = createNewSocket(*itListen);
-				socks.servSock = fd;
-				sockets.push_back(socks);
+				socks.servSock = createNewSocket(*itListen, cAddress, addresses);
+				if (socks.servSock > 0)
+					sockets.push_back(socks);
+				else
+					resolveBindingError(cAddress, addresses, sockets, (*itListen), currentServ);
 				std::cout << PURPLE "\t\t\tListening: " << (*itListen).ip << ":" << (*itListen).port << NC << std::endl;
 			}
 			catch(const std::exception& e)
@@ -161,7 +163,7 @@ void	readFromSocket(int kq, int clientSocket, std::map<int, mssg> & m, std::vect
 	int			bytesRead;
 	char		buffer[BUFFER_SIZE + 1];
 	Request &	currentReq = m[clientSocket].req;
-	Server &	currentServ = getSocketServ(clientSocket, sockets).serv;
+	Server &	currentServ = getSocketServ(clientSocket, sockets).servers.front();
 
 	bytesRead = recv(clientSocket, buffer, BUFFER_SIZE, 0);
 	if (bytesRead <= 0)
@@ -183,7 +185,8 @@ void	manageRequestState(mssg & m, int clientSocket, int kq, std::vector<socketSe
 	if (m.req.getState() == __FINISHED__)
 	{
 		m.req.setTimeout(-1);
-		ResponseGen	res(m.req, getSocketServ(clientSocket, sockets).serv, m.closeOnEnd);
+		Server &	serv = resolveServerName(m.req, getSocketServ(clientSocket, sockets).servers);
+		ResponseGen	res(m.req, serv, m.closeOnEnd);
 		m.res = res.DoResponse().generateResponse();
 		EV_SET(&evSet[0], clientSocket, EVFILT_READ, EV_DELETE, 0, 0, 0);
 		EV_SET(&evSet[1], clientSocket, EVFILT_WRITE, EV_ADD, 0, 0, 0);
@@ -250,7 +253,8 @@ void	updateTimers(int kq, std::map<int, mssg> & m, std::vector<socketServ> & soc
 			}
 			m[(*it).first].req.setErrorCode(REQUEST_TIMEOUT);
 			m[(*it).first].req.setState(__FINISHED__);
-			ResponseGen	res(m[(*it).first].req, getSocketServ((*it).first, sockets).serv, m[(*it).first].closeOnEnd);
+			Server &	serv = resolveServerName(m[(*it).first].req, getSocketServ((*it).first, sockets).servers);
+			ResponseGen	res(m[(*it).first].req, serv, m[(*it).first].closeOnEnd);
 			m[(*it).first].res = res.DoResponse().generateResponse();
 		}
 	}

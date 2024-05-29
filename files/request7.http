@@ -1,5 +1,0 @@
-POST /submit-form
-Host: example.com
-Content-Length: 17
-
-username=testuser

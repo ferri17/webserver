@@ -31,6 +31,7 @@ class	Request
 		std::string							_remainder;
 		std::string							_chunk;
 		ssize_t								_chunkSize;
+		bool								_loadChunk;
 		int									_state;
 		ssize_t								_timeout;
 
@@ -49,6 +50,8 @@ class	Request
 		void				parsingRequestLine(void);
 		void				parsingHeaders(void);
 		void				parsingBody(long maxBodySize);
+		void				findChunkSize(void);
+		void				loadChunk(void);
 	public:
 		Request(void);
 		Request &	operator=(const Request & other);
