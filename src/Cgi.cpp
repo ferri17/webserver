@@ -104,7 +104,7 @@ int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string 
 		pid_t result = waitpid(pid, &status, WNOHANG);
 		if (result == 0)
 		{
-			sleep(2);
+			sleep(1);
 			result = waitpid(pid, &status, WNOHANG);
 			if (result == 0)
 			{
@@ -120,10 +120,7 @@ int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string 
 		if (WEXITSTATUS(status) != 0)
 			return (1);
 		while ((bytes_read = read(pipefd[0], buffer, sizeof(buffer))) > 0)
-		{
-			//std::cout << buffer << std::endl;
 			ss.write(buffer, bytes_read);
-		}
 		close(pipefd[0]);
 		s = ss.str();
 	}
