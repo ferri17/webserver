@@ -43,17 +43,6 @@ int	createNewSocket(t_listen & list, struct sockaddr_in & cAddress, std::vector<
 	{
 		freeaddrinfo(addr);
 		return (-1);
-		/* sockaddr_in* errAddr = reinterpret_cast<sockaddr_in*>(addr->ai_addr);
-		for (std::vector<struct sockaddr_in>::iterator it = addresses.begin(); it != addresses.end(); it++)
-		{
-			if (!memcmp(&(errAddr->sin_addr),&(it->sin_addr), sizeof (in_addr)) && errAddr->sin_port == (*it).sin_port)
-				std::cout << "match" << std::endl;
-		}
-		int port = ntohs(errAddr->sin_port);
-		std::string	mssgErr = strerror(errno);
-		mssgErr += ": Port -> ";
-		mssgErr += toString(port);
-		throw std::runtime_error(mssgErr);*/
 	}
 	if (listen(localSocket, MAX_CONNECTION_BACKLOG) != 0)
 	{
@@ -68,7 +57,6 @@ int	createNewSocket(t_listen & list, struct sockaddr_in & cAddress, std::vector<
 std::vector<socketServ>	initSockets(std::vector<Server> & s)
 {
 	int							sId = 0;
-	socketServ					socks;
 	std::vector<t_listen>		cListen;
 	std::vector<socketServ>		sockets;
 	struct sockaddr_in			cAddress;
@@ -77,6 +65,7 @@ std::vector<socketServ>	initSockets(std::vector<Server> & s)
 
 	for (std::vector<Server>::iterator itServ = s.begin(); itServ != s.end(); itServ++)
 	{
+		socketServ					socks;
 		Server &	currentServ = (*itServ);
 
 		socks.servers.push_back(currentServ);
@@ -90,9 +79,7 @@ std::vector<socketServ>	initSockets(std::vector<Server> & s)
 				if (socks.servSock > 0)
 					sockets.push_back(socks);
 				else
-				{
 					resolveBindingError(cAddress, addresses, sockets, (*itListen), currentServ);
-				}
 				std::cout << PURPLE "\t\t\tListening: " << (*itListen).ip << ":" << (*itListen).port << NC << std::endl;
 			}
 			catch(const std::exception& e)

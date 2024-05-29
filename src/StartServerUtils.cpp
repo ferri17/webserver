@@ -43,7 +43,7 @@ void	resolveBindingError(struct sockaddr_in & cAddress, std::vector<struct socka
 {
 	for (size_t i = 0; i < addresses.size() && i < sockets.size(); i++)
 	{
-		if (!memcmp(&(cAddress.sin_addr),&(addresses[i].sin_addr), sizeof (in_addr)) 
+		if (!memcmp(&(cAddress.sin_addr),&(addresses.at(i).sin_addr), sizeof (in_addr)) 
 			&& cAddress.sin_port == addresses[i].sin_port)
 		{
 			sockets.at(i).servers.push_back(cServ);
@@ -63,7 +63,6 @@ Server &	resolveServerName(Request & req, std::vector<Server> & servers)
 	std::map<std::string, std::string>	headers = req.getHeaderField();
 	std::map<std::string, std::string>::iterator itHost = headers.find("host");
 
-		std::cout << "serv name:" << servers.front().getServerName().front();
 	if (servers.size() == 1)
 	{
 		return (servers.front());
