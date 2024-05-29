@@ -217,7 +217,6 @@ Request &	Request::operator=(const Request & other)
 		this->_headerField = other._headerField;
 		this->_bodyMssg = other._bodyMssg;
 		this->_errorCode = other._errorCode;
-		//this->_errorMssg = other._errorMssg;
 		this->_remainder = other._remainder;
 		this->_state = other._state;
 	}

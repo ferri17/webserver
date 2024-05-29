@@ -2,15 +2,8 @@
 #include "Cgi.hpp"
 #include <signal.h>
 
-Cgi::Cgi()
-{
-
-}
-
-Cgi::~Cgi()
-{
-
-}
+Cgi::Cgi(){}
+Cgi::~Cgi(){}
 
 t_cgi_type Cgi::findExtension(std::string str, std::vector<t_cgi_type> cgi)
 {
@@ -71,7 +64,6 @@ char **Cgi::generateEnv(std::vector<std::string> cookies)
 	return (env);
 }
 
-// MISSING CONTROL TIMEOUT
 int Cgi::generateCgi(std::vector<t_cgi_type> cgi, std::string file, std::string &s, std::vector<std::string> cookies)
 {
 	int pipefd[2];

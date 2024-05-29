@@ -294,7 +294,7 @@ int Input::checkValidMethods(std::vector<std::string> &lineSplit)
 	for (size_t i = 1; i < lineSplit.size(); i++)
 	{
 		if (lineSplit[i] != "POST" && lineSplit[i] != "GET" 
-		&& lineSplit[i] != "DELETE" && lineSplit[i] != "HEAD")
+		&& lineSplit[i] != "DELETE")
 			return (0);
 	}
 	return (1);

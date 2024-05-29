@@ -85,9 +85,9 @@ Server::~Server( void )
 
 bool	Server::isServerMethod(std::string & method)
 {
-	std::string	validMethods[4] = {"GET", "HEAD", "POST", "DELETE"};
+	std::string	validMethods[3] = {"GET", "POST", "DELETE"};
 
-	for (size_t i = 0; i < 4; i++)
+	for (size_t i = 0; i < 3; i++)
 		if (method == validMethods[i])
 			return (true);
 	return (false);

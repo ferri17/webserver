@@ -26,7 +26,6 @@
 typedef struct socketServ {
 	int					servSock;
 	std::vector<int>	clientSock;
-	//Server 				serv;
 	std::vector<Server> servers;
 }	socketServ;
 

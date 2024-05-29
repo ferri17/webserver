@@ -34,9 +34,6 @@ class	Response
 		void		setHeaders(std::map<std::string, std::string> headers);
 		void		addHeaderField(std::pair<std::string, std::string> headerField);
 		void		setBody(std::string  body);
-		//Response(const Response & other);
-		//Response &	operator=(const Response & other);
-		//~Response(void);
 };
 
 std::ostream &	operator<<(std::ostream &out, const Response &req);
