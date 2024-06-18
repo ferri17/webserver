@@ -17,6 +17,9 @@
 <!-- ABOUT THE PROJECT -->
 ## About The Project
 
+
+![Webserver demo intro](https://github.com/ferri17/webserver/assets/19575860/4e6b753f-4980-46b7-97a5-9a2f971d502e)
+
 This repository contains a **non-blocking HTTP/1.1 server implemented in C++98.** The server is designed to handle multiple connections simultaneously without blocking on I/O operations. Non-blocking I/O is a critical feature in modern network servers, enabling the server to handle many connections simultaneously without waiting for I/O operations to complete. The server supports basic HTTP/1.1 functionality, including handling **GET, POST and DELETE requests**. It also includes a simple configuration system that allows users to set up the server parameters, such as listening ports, document roots, and more, through a **configuration file very similar to nginx.**
 
 <!-- GETTING STARTED -->
