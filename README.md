@@ -61,7 +61,7 @@ server
 		index			empty.html;
 		cgi			.sh /bin/bash;
 	}
-	location /cacatua/ {
+	location /assets/ {
 		root		./cgi;
 		autoindex	on;
 	}
